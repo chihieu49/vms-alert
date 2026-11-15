@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """
 SQLAlchemy Models
-Bao gồm: Vessel, VesselState, VesselPosition, AlertHistory
+Bao gồm: Vessel, VesselState, VesselPosition, AlertHistory, DailyStats
 """
 import enum
 from datetime import datetime
 from sqlalchemy import (
     Column, Integer, String, Float, Boolean, DateTime,
-    ForeignKey, Text, Enum
+    ForeignKey, Text, Enum, Date, Index
 )
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -22,6 +22,25 @@ class ChannelEnum(str, enum.Enum):
     TELEGRAM = "TELEGRAM"
     ZALO = "ZALO"
     SMS = "SMS"
+
+class UserRole(str, enum.Enum):
+    ADMIN = "admin"          # Toàn quyền: thêm/sửa/xóa tàu, quản lý người dùng, quét hệ thống
+    SUPERVISOR = "supervisor" # Giám sát viên: xem bản đồ + danh sách tàu, kích hoạt quét thủ công, xuất báo cáo
+    VIEWER = "viewer"        # Chỉ xem: tra cứu dashboard, bản đồ, danh sách tàu
+
+class User(Base):
+    """Bảng người dùng và tài khoản truy cập hệ thống"""
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), unique=True, index=True, nullable=False)
+    full_name = Column(String(100), nullable=False)
+    hashed_password = Column(String(255), nullable=False)
+    role = Column(Enum(UserRole), default=UserRole.VIEWER, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    last_login = Column(DateTime, nullable=True)
+    created_by = Column(String(50), nullable=True)
 
 class Vessel(Base):
     """Bảng danh sách tàu cá cần giám sát (chiều dài >= 15 mét)"""
@@ -66,6 +85,9 @@ class VesselState(Base):
     # Relationship
     vessel = relationship("Vessel", back_populates="state")
 
+# Thêm index cho VesselState.current_status để tăng hiệu năng truy vấn
+Index("ix_vessel_states_current_status", VesselState.current_status)
+
 class VesselPosition(Base):
     """Lịch sử hành trình tọa độ vị trí thực tế của tàu từ VMS"""
     __tablename__ = "vessel_positions"
@@ -100,3 +122,20 @@ class AlertHistory(Base):
     # Relationship
     vessel = relationship("Vessel", back_populates="alerts")
 
+# Thêm index cho AlertHistory.sent_at để tăng hiệu năng truy vấn lịch sử theo ngày
+Index("ix_alert_histories_sent_at", AlertHistory.sent_at)
+Index("ix_alert_histories_plate_number", AlertHistory.plate_number)
+
+class DailyStats(Base):
+    """Thống kê hàng ngày: tổng tàu, số mất kết nối, số phục hồi"""
+    __tablename__ = "daily_stats"
+
+    id = Column(Integer, primary_key=True, index=True)
+    stat_date = Column(Date, nullable=False, unique=True, index=True)  # Ngày thống kê
+    total_vessels = Column(Integer, default=0)                          # Tổng số tàu trong danh sách
+    lost_count = Column(Integer, default=0)                             # Số tàu mất kết nối trong ngày
+    recovered_count = Column(Integer, default=0)                        # Số tàu phục hồi trong ngày
+    normal_count = Column(Integer, default=0)                           # Số tàu bình thường
+    alert_emails_sent = Column(Integer, default=0)                      # Số email cảnh báo đã gửi
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

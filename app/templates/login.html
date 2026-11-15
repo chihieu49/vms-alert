@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng Nhập - Hệ Thống Giám Sát Tàu Cá VMS Ninh Hòa - Vạn Ninh</title>
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        navy: { 800: '#0f172a', 900: '#020617' },
+                        marine: { 500: '#0ea5e9', 600: '#0284c7', 700: '#0369a1' }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gradient-to-br from-slate-900 via-navy-900 to-slate-950 text-slate-100 min-h-screen flex flex-col justify-between font-sans selection:bg-marine-600 selection:text-white">
+
+    <!-- Top Gov Bar -->
+    <div class="bg-black/40 backdrop-blur border-b border-slate-800 text-xs py-2 px-4 text-center sm:text-left flex justify-between items-center">
+        <div class="flex items-center space-x-2 mx-auto sm:mx-0">
+            <i class="fa-solid fa-anchor text-amber-400"></i>
+            <span class="font-bold text-white tracking-wide">TRẠM KIỂM NGƯ NINH HÒA - VẠN NINH</span>
+            <span class="text-slate-600 hidden md:inline">|</span>
+            <span class="text-slate-400 hidden md:inline">CHI CỤC THỦY SẢN VÀ BIỂN ĐẢO TỈNH KHÁNH HÒA</span>
+        </div>
+        <div class="hidden sm:flex items-center space-x-2 text-slate-400 text-[11px]">
+            <i class="fa-solid fa-shield-halved text-emerald-400"></i>
+            <span>Cổng Giám Sát Hành Trình Tàu Cá Chuyên Dụng</span>
+        </div>
+    </div>
+
+    <!-- Login Container -->
+    <div class="flex-1 flex items-center justify-center p-4 sm:p-6 my-6">
+        <div class="w-full max-w-md">
+            
+            <!-- Logo & Brand Header -->
+            <div class="text-center mb-6">
+                <div class="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-tr from-marine-600 to-sky-400 shadow-xl shadow-marine-600/30 text-white mb-4 ring-4 ring-marine-500/20">
+                    <i class="fa-solid fa-ship text-3xl"></i>
+                </div>
+                <h1 class="text-xl sm:text-2xl font-extrabold text-white tracking-tight">HỆ THỐNG VMS ALERT</h1>
+                <p class="text-xs sm:text-sm text-slate-400 mt-1 max-w-xs mx-auto">
+                    Giám sát hành trình tàu cá ≥ 15 mét • Cảnh báo tự động & Khắc phục mất kết nối
+                </p>
+            </div>
+
+            <!-- Login Card -->
+            <div class="bg-slate-800/80 backdrop-blur-xl border border-slate-700/80 rounded-2xl shadow-2xl p-6 sm:p-8 relative overflow-hidden">
+                <div class="absolute -top-24 -right-24 w-48 h-48 bg-marine-500/10 rounded-full blur-2xl pointer-events-none"></div>
+
+                <div class="flex items-center justify-between border-b border-slate-700/60 pb-4 mb-5">
+                    <div>
+                        <h2 class="text-base font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-right-to-bracket text-marine-500"></i>
+                            Đăng Nhập Hệ Thống
+                        </h2>
+                        <p class="text-xs text-slate-400">Nhập tài khoản được cấp bởi Trạm Kiểm Ngư</p>
+                    </div>
+                    <span class="px-2 py-1 rounded bg-slate-700/60 text-[10px] text-slate-300 font-mono">v2.0.0</span>
+                </div>
+
+                <!-- Error Alert Box -->
+                {% if error %}
+                <div class="mb-5 bg-red-500/10 border border-red-500/40 rounded-xl p-3.5 flex items-start gap-3 text-red-200 text-xs animate-shake">
+                    <i class="fa-solid fa-triangle-exclamation text-red-400 text-base shrink-0 mt-0.5"></i>
+                    <div class="flex-1 font-medium leading-relaxed">{{ error }}</div>
+                </div>
+                {% endif %}
+
+                <!-- Form Login -->
+                <form method="POST" action="/login" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
+                            <i class="fa-solid fa-user text-slate-400 text-[11px]"></i>
+                            Tên đăng nhập
+                        </label>
+                        <div class="relative">
+                            <input 
+                                type="text" 
+                                name="username" 
+                                id="username" 
+                                required 
+                                autofocus
+                                placeholder="admin / giamsat / khach"
+                                class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-marine-500 focus:border-marine-500 transition"
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label class="block text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                                <i class="fa-solid fa-lock text-slate-400 text-[11px]"></i>
+                                Mật khẩu
+                            </label>
+                            <button type="button" onclick="togglePasswordVisibility()" class="text-[11px] text-marine-400 hover:text-marine-300 transition">
+                                <span id="toggle-pwd-text">Hiện mật khẩu</span>
+                            </button>
+                        </div>
+                        <div class="relative">
+                            <input 
+                                type="password" 
+                                name="password" 
+                                id="password" 
+                                required 
+                                placeholder="••••••••"
+                                class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-marine-500 focus:border-marine-500 transition"
+                            />
+                        </div>
+                    </div>
+
+                    <button 
+                        type="submit" 
+                        class="w-full bg-gradient-to-r from-marine-600 to-sky-500 hover:from-marine-700 hover:to-sky-600 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-marine-600/30 transition transform active:scale-[0.99] flex items-center justify-center gap-2 mt-2"
+                    >
+                        <i class="fa-solid fa-arrow-right-to-bracket"></i>
+                        <span>Đăng Nhập Ngay</span>
+                    </button>
+                </form>
+
+                <!-- Quick Fill Test Accounts Section -->
+                <div class="mt-6 pt-5 border-t border-slate-700/60">
+                    <p class="text-[11px] text-slate-400 font-semibold mb-2.5 flex items-center gap-1.5">
+                        <i class="fa-solid fa-key text-amber-400 text-[10px]"></i>
+                        Tài khoản mẫu dùng thử nhanh:
+                    </p>
+                    <div class="grid grid-cols-3 gap-2 text-xs">
+                        <button 
+                            type="button" 
+                            onclick="fillCredentials('admin', 'admin@nhvn2026')"
+                            class="bg-slate-900/80 hover:bg-slate-700/80 border border-slate-700 p-2 rounded-lg text-left transition group"
+                            title="Tài khoản Quản Trị Viên (Toàn quyền)"
+                        >
+                            <div class="font-bold text-amber-400 flex items-center gap-1">
+                                <i class="fa-solid fa-crown text-[10px]"></i>
+                                Admin
+                            </div>
+                            <div class="text-[10px] text-slate-400 group-hover:text-slate-300">Toàn quyền</div>
+                        </button>
+
+                        <button 
+                            type="button" 
+                            onclick="fillCredentials('giamsat', 'gs@nhvn2026')"
+                            class="bg-slate-900/80 hover:bg-slate-700/80 border border-slate-700 p-2 rounded-lg text-left transition group"
+                            title="Tài khoản Giám Sát Viên Ca Trực"
+                        >
+                            <div class="font-bold text-sky-400 flex items-center gap-1">
+                                <i class="fa-solid fa-user-shield text-[10px]"></i>
+                                Giám Sát
+                            </div>
+                            <div class="text-[10px] text-slate-400 group-hover:text-slate-300">Quét & Báo cáo</div>
+                        </button>
+
+                        <button 
+                            type="button" 
+                            onclick="fillCredentials('khach', 'khach@nhvn2026')"
+                            class="bg-slate-900/80 hover:bg-slate-700/80 border border-slate-700 p-2 rounded-lg text-left transition group"
+                            title="Tài khoản Khách Tra Cứu (Chỉ xem)"
+                        >
+                            <div class="font-bold text-emerald-400 flex items-center gap-1">
+                                <i class="fa-solid fa-eye text-[10px]"></i>
+                                Chỉ Xem
+                            </div>
+                            <div class="text-[10px] text-slate-400 group-hover:text-slate-300">Tra cứu tàu</div>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Help Contact -->
+            <div class="text-center mt-5 text-xs text-slate-500">
+                <span>Quên mật khẩu hoặc cần cấp quyền mới? Liên hệ: </span>
+                <a href="mailto:adminnhvn@gmail.com" class="text-marine-400 hover:underline font-semibold">adminnhvn@gmail.com</a>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-black/40 border-t border-slate-800/80 py-3 text-center text-xs text-slate-500 px-4">
+        Hệ thống Giám Sát Hành Trình Tàu Cá VMS • Trạm Kiểm Ngư Ninh Hòa - Vạn Ninh • Chi cục Thủy sản và Biển đảo tỉnh Khánh Hòa
+    </footer>
+
+    <script>
+        function fillCredentials(u, p) {
+            document.getElementById('username').value = u;
+            document.getElementById('password').value = p;
+        }
+
+        function togglePasswordVisibility() {
+            const pwd = document.getElementById('password');
+            const txt = document.getElementById('toggle-pwd-text');
+            if (pwd.type === 'password') {
+                pwd.type = 'text';
+                txt.textContent = 'Ẩn mật khẩu';
+            } else {
+                pwd.type = 'password';
+                txt.textContent = 'Hiện mật khẩu';
+            }
+        }
+    </script>
+</body>
+</html>

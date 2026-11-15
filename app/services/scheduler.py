@@ -12,7 +12,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from app.config import settings
 from app.database import SessionLocal
 from app.models import Vessel, VesselState, StateEnum, ChannelEnum
-from app.crud import normalize_plate, add_position_record, record_alert_event
+from app.crud import normalize_plate, add_position_record, record_alert_event, upsert_daily_stats
 from app.services.vms_client import vms_client
 from app.services.notifier import notifier
 from app.services.geo_utils import normalize_vessel_coords
@@ -40,6 +40,9 @@ class VMSSchedulerService:
             id="vms_poll_job",
             name="Chu kỳ kiểm tra VMS 2 giờ",
             replace_existing=True,
+            misfire_grace_time=3600,
+            coalesce=True,
+            max_instances=1,
             next_run_time=datetime.now() # Kích hoạt chu kỳ đầu tiên ngay lập tức
         )
 
@@ -165,7 +168,8 @@ class VMSSchedulerService:
                         if diff <= threshold_minutes:
                             has_recent_signal = True
                     else:
-                        has_recent_signal = True
+                        # Nếu API/file không có timestamp, chỉ chấp nhận có tín hiệu nếu có tọa độ GPS hợp lệ
+                        has_recent_signal = (norm_lat is not None and norm_lng is not None)
 
                     # Cập nhật thông tin bổ sung từ GSTC nếu thiếu
                     if match_rec.get("deviceId") and not v.device_id:
@@ -253,6 +257,21 @@ class VMSSchedulerService:
                     )
 
             db.commit()
+
+            # Ghi nhận thống kê ngày phục vụ vẽ biểu đồ xu hướng 7 ngày
+            try:
+                upsert_daily_stats(
+                    db=db,
+                    stat_date=now.date(),
+                    total=len(vessels),
+                    lost=len(lost_to_alert),
+                    recovered=len(recovered_list),
+                    normal=len(normal_list),
+                    emails_sent=1 if lost_to_alert else 0
+                )
+                db.commit()
+            except Exception as e_stat:
+                print(f"[SCHEDULER] Không cập nhật được daily stats: {e_stat}")
 
             # Tự động gửi email cảnh báo tới adminnhvn@gmail.com
             email_msg = "Không có cảnh báo mới."

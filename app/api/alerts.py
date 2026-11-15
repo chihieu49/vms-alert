@@ -3,10 +3,12 @@
 Alerts API
 Nhật ký cảnh báo, xem email lưu trữ, kiểm thử kịch bản khắc phục
 """
+import io
 import json
 from datetime import datetime
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException
+import pandas as pd
+from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.responses import HTMLResponse, FileResponse
 from sqlalchemy.orm import Session
 
@@ -20,8 +22,53 @@ from app.services.notifier import notifier
 router = APIRouter(prefix="/api/alerts", tags=["Alerts"])
 
 @router.get("/history", response_model=List[AlertHistoryOut])
-def list_alert_history(limit: int = 50, db: Session = Depends(get_db)):
-    return get_recent_alerts(db, limit)
+def list_alert_history(limit: int = 50, skip: int = 0, db: Session = Depends(get_db)):
+    return get_recent_alerts(db, limit=limit, skip=skip)
+
+@router.get("/stats")
+def get_alerts_stats(db: Session = Depends(get_db)):
+    """Thống kê tổng quan về lịch sử cảnh báo và phục hồi"""
+    total = db.query(AlertHistory).count()
+    alerts_sent = db.query(AlertHistory).filter(AlertHistory.event_type == "ALERT_SENT").count()
+    recovered = db.query(AlertHistory).filter(AlertHistory.event_type == "RECOVERED_DISCONTINUE").count()
+    return {
+        "total_events": total,
+        "alerts_sent": alerts_sent,
+        "recovered_discontinued": recovered,
+        "recipient": settings.ADMIN_EMAIL
+    }
+
+@router.get("/export-excel")
+def export_alerts_excel(db: Session = Depends(get_db)):
+    """Xuất toàn bộ nhật ký cảnh báo và trạng thái khắc phục ra Excel (.xlsx)"""
+    alerts = db.query(AlertHistory).order_by(AlertHistory.sent_at.desc()).limit(1000).all()
+    rows = []
+    for idx, a in enumerate(alerts, start=1):
+        event_label = "Mất kết nối (> 2h)" if a.event_type == "ALERT_SENT" else "Đã khắc phục (Chấm dứt cảnh báo)"
+        rows.append({
+            "STT": idx,
+            "Thời Gian": a.sent_at.strftime("%d/%m/%Y %H:%M:%S") if a.sent_at else "",
+            "Số Đăng Ký (Biển số)": a.plate_number,
+            "Loại Sự Kiện": event_label,
+            "Kênh Thông Báo": a.channel.value if hasattr(a.channel, 'value') else str(a.channel),
+            "Nơi Nhận": a.recipient,
+            "Số Chu Kỳ Mất": a.consecutive_cycles,
+            "Chi Tiết Nội Dung": a.details or "",
+            "Trạng Thái Gửi": a.delivery_status
+        })
+
+    df = pd.DataFrame(rows)
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Nhat_Ky_Canh_Bao')
+    output.seek(0)
+
+    filename = f"Nhat_ky_canh_bao_VMS_NHVN_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+    return Response(
+        content=output.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
 
 @router.get("/sent-emails")
 def list_sent_emails():
@@ -42,8 +89,14 @@ def list_sent_emails():
 
 @router.get("/view-email/{filename}", response_class=HTMLResponse)
 def view_email_html(filename: str):
-    """Xem trực tiếp bản sao email HTML"""
-    file_path = settings.EMAILS_DIR / filename
+    """Xem trực tiếp bản sao email HTML (Chống Path Traversal)"""
+    from pathlib import Path
+    clean_name = Path(filename).name
+    if not clean_name.endswith(".html") or ".." in filename:
+        raise HTTPException(status_code=400, detail="Tên file không hợp lệ")
+    file_path = (settings.EMAILS_DIR / clean_name).resolve()
+    if not str(file_path).startswith(str(settings.EMAILS_DIR.resolve())):
+        raise HTTPException(status_code=403, detail="Không có quyền truy cập file này")
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="Không tìm thấy email")
     with open(file_path, "r", encoding="utf-8") as f:

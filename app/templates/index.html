@@ -83,27 +83,41 @@
 </div>
 
 <!-- Tab Navigation Header -->
-<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-    <div class="flex space-x-1 bg-slate-200/80 p-1 rounded-xl">
-        <button id="tab-btn-vessels" onclick="switchTab('vessels')" class="px-4 py-2 rounded-lg text-sm font-semibold transition bg-white text-navy-900 shadow-sm">
+<div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-4">
+    <div class="flex flex-wrap gap-1 bg-slate-200/80 p-1 rounded-xl">
+        <button id="tab-btn-vessels" onclick="switchTab('vessels')" class="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition bg-white text-navy-900 shadow-sm">
             <i class="fa-solid fa-list-check mr-1.5 text-marine-600"></i> Danh Sách Tàu
         </button>
-        <button id="tab-btn-map" onclick="switchTab('map')" class="px-4 py-2 rounded-lg text-sm font-semibold transition text-slate-600 hover:text-navy-900">
+        <button id="tab-btn-map" onclick="switchTab('map')" class="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition text-slate-600 hover:text-navy-900">
             <i class="fa-solid fa-map-location-dot mr-1.5 text-marine-600"></i> Bản Đồ VMS
         </button>
-        <button id="tab-btn-alerts" onclick="switchTab('alerts')" class="px-4 py-2 rounded-lg text-sm font-semibold transition text-slate-600 hover:text-navy-900">
+        <button id="tab-btn-chart" onclick="switchTab('chart')" class="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition text-slate-600 hover:text-navy-900">
+            <i class="fa-solid fa-chart-line mr-1.5 text-marine-600"></i> Biểu Đồ 7 Ngày
+        </button>
+        <button id="tab-btn-alerts" onclick="switchTab('alerts')" class="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition text-slate-600 hover:text-navy-900">
             <i class="fa-solid fa-clock-rotate-left mr-1.5 text-marine-600"></i> Nhật Ký Sự Cố
         </button>
-        <button id="tab-btn-emails" onclick="switchTab('emails')" class="px-4 py-2 rounded-lg text-sm font-semibold transition text-slate-600 hover:text-navy-900">
+        <button id="tab-btn-emails" onclick="switchTab('emails')" class="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition text-slate-600 hover:text-navy-900">
             <i class="fa-solid fa-envelope mr-1.5 text-marine-600"></i> Hộp Thư Email
         </button>
+        {% if user and user.role == 'admin' %}
+        <button id="tab-btn-users" onclick="switchTab('users')" class="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition text-slate-600 hover:text-navy-900 bg-amber-500/10 text-amber-900 border border-amber-300/50">
+            <i class="fa-solid fa-users-gear mr-1.5 text-amber-600"></i> Người Dùng
+        </button>
+        {% endif %}
     </div>
 
-    <div class="flex items-center space-x-2">
-        <a href="/api/vessels/sample-template" class="text-xs font-medium text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-2 rounded-lg transition flex items-center gap-1.5">
-            <i class="fa-solid fa-file-excel"></i> File Mẫu Excel
+    <div class="flex flex-wrap items-center gap-2">
+        <button onclick="exportVesselsExcel()" class="text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-3 py-2 rounded-lg shadow-sm transition flex items-center gap-1.5" title="Xuất toàn bộ danh sách tàu cá và trạng thái kết nối ra file Excel">
+            <i class="fa-solid fa-file-excel text-emerald-600"></i> Xuất Excel Tàu
+        </button>
+        <button onclick="exportAlertsExcel()" class="text-xs font-semibold text-sky-800 bg-sky-50 hover:bg-sky-100 border border-sky-300 px-3 py-2 rounded-lg shadow-sm transition flex items-center gap-1.5" title="Xuất toàn bộ nhật ký cảnh báo và khắc phục ra file Excel">
+            <i class="fa-solid fa-file-arrow-down text-sky-600"></i> Báo Cáo Cảnh Báo
+        </button>
+        <a href="/api/vessels/sample-template" class="text-xs font-medium text-slate-700 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-300 px-2.5 py-2 rounded-lg transition flex items-center gap-1" title="Tải file mẫu Excel chuẩn để nạp danh sách tàu">
+            <i class="fa-solid fa-file-code text-slate-500"></i> Mẫu Excel
         </a>
-        <button onclick="simulateRecoveryTest()" class="text-xs font-medium text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-300 px-3 py-2 rounded-lg shadow-sm transition flex items-center gap-1.5">
+        <button onclick="simulateRecoveryTest()" class="text-xs font-medium text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-300 px-2.5 py-2 rounded-lg shadow-sm transition flex items-center gap-1" title="Giả lập 1 tàu báo vị trí để kiểm tra cơ chế tự động chấm dứt cảnh báo">
             <i class="fa-solid fa-vial text-amber-500"></i> Giả Lập Khắc Phục
         </button>
     </div>
@@ -130,6 +144,22 @@
             </div>
         </div>
         {% include "partials/vessel_table.html" %}
+
+        <!-- Pagination Controls cho Danh Sách Tàu -->
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 pt-3 border-t border-slate-200 text-xs text-slate-600">
+            <div>
+                Hiển thị <span id="pag-start" class="font-bold text-slate-800">0</span> - <span id="pag-end" class="font-bold text-slate-800">0</span> trên tổng số <span id="pag-total" class="font-bold text-marine-600">0</span> tàu cá
+            </div>
+            <div class="flex items-center space-x-1" id="pag-buttons-container">
+                <button type="button" onclick="prevVesselsPage()" id="btn-pag-prev" class="px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition font-medium flex items-center gap-1">
+                    <i class="fa-solid fa-chevron-left text-[10px]"></i> Trước
+                </button>
+                <span id="pag-page-info" class="px-3 py-1.5 font-semibold text-slate-800 bg-slate-100 rounded-lg">Trang 1 / 1</span>
+                <button type="button" onclick="nextVesselsPage()" id="btn-pag-next" class="px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition font-medium flex items-center gap-1">
+                    Sau <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- View 2: Bản đồ Hải đồ Leaflet -->
@@ -227,6 +257,110 @@
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="sent-emails-grid">
             <div class="col-span-2 text-center py-8 text-slate-400">Đang tải hộp thư...</div>
+        </div>
+    </div>
+
+    <!-- View 5: Biểu đồ xu hướng 7 ngày -->
+    <div id="view-chart" class="tab-view p-4 sm:p-6 hidden">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-200">
+            <div>
+                <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-line text-marine-600"></i>
+                    Biểu Đồ Xu Hướng Giám Sát Hành Trình VMS (7 Ngày Gần Nhất)
+                </h3>
+                <p class="text-xs text-slate-500 mt-0.5">
+                    Theo dõi biến động số lượng tàu mất kết nối >2h, tàu hoạt động bình thường và tàu vừa được khắc phục
+                </p>
+            </div>
+            <button onclick="loadStatsChart()" class="text-xs text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 self-start sm:self-auto font-medium">
+                <i class="fa-solid fa-arrows-rotate"></i> Cập nhật biểu đồ
+            </button>
+        </div>
+
+        <!-- KPI Mini Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div class="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center justify-between">
+                <div>
+                    <div class="text-xs font-semibold text-red-700 uppercase tracking-wider">Mất Kết Nối (> 2h) Hôm Nay</div>
+                    <div class="text-2xl font-extrabold text-red-600 mt-1" id="chart-kpi-lost">--</div>
+                    <div class="text-[11px] text-red-500 mt-0.5">Cần liên hệ chủ tàu xác minh</div>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-red-100 text-red-600 flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+            </div>
+
+            <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center justify-between">
+                <div>
+                    <div class="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Tàu Bình Thường (< 2h)</div>
+                    <div class="text-2xl font-extrabold text-emerald-600 mt-1" id="chart-kpi-normal">--</div>
+                    <div class="text-[11px] text-emerald-500 mt-0.5">Tín hiệu GPS cập nhật ổn định</div>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+            </div>
+
+            <div class="bg-sky-50 border border-sky-200 rounded-xl p-4 flex items-center justify-between">
+                <div>
+                    <div class="text-xs font-semibold text-sky-700 uppercase tracking-wider">Đã Khắc Phục (Recovery)</div>
+                    <div class="text-2xl font-extrabold text-sky-600 mt-1" id="chart-kpi-recovered">--</div>
+                    <div class="text-[11px] text-sky-500 mt-0.5">Tự động chấm dứt gửi cảnh báo</div>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart Canvas Container -->
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 relative" style="min-height: 380px;">
+            <canvas id="vms-trend-chart"></canvas>
+        </div>
+    </div>
+
+    <!-- View 6: Quản lý người dùng (Admin Only) -->
+    <div id="view-users" class="tab-view p-4 sm:p-6 hidden">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-4 border-b border-slate-200">
+            <div>
+                <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-users-gear text-marine-600"></i>
+                    Quản Lý Tài Khoản & Phân Quyền Truy Cập
+                </h3>
+                <p class="text-xs text-slate-500 mt-0.5">
+                    Quản lý danh sách cán bộ, phân quyền (Admin / Giám sát viên / Chỉ xem) và bảo mật truy cập
+                </p>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="loadUsers()" class="text-xs text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 px-3 py-2 rounded-lg transition flex items-center gap-1.5 font-medium">
+                    <i class="fa-solid fa-arrows-rotate"></i> Làm mới
+                </button>
+                <button onclick="openAddUserModal()" class="text-xs font-bold text-white bg-marine-600 hover:bg-marine-700 px-3.5 py-2 rounded-lg shadow transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-user-plus"></i> Thêm Tài Khoản Mới
+                </button>
+            </div>
+        </div>
+
+        <!-- User Table -->
+        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+            <table class="w-full text-left border-collapse text-sm">
+                <thead>
+                    <tr class="bg-slate-800 text-slate-200 text-xs uppercase font-semibold">
+                        <th class="py-3 px-4 text-center w-12">STT</th>
+                        <th class="py-3 px-4">Tên Đăng Nhập</th>
+                        <th class="py-3 px-4">Họ và Tên</th>
+                        <th class="py-3 px-4 text-center">Vai Trò (Role)</th>
+                        <th class="py-3 px-4 text-center">Trạng Thái</th>
+                        <th class="py-3 px-4">Lần Đăng Nhập Cuối</th>
+                        <th class="py-3 px-4 text-center w-44">Thao Tác</th>
+                    </tr>
+                </thead>
+                <tbody id="users-tbody" class="divide-y divide-slate-200">
+                    <tr>
+                        <td colspan="7" class="py-8 text-center text-slate-400">Đang tải danh sách người dùng...</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
@@ -425,6 +559,120 @@
                 </div>
             </div>
 
+        </div>
+    </div>
+</div>
+
+<!-- Modal Thêm / Sửa Tài Khoản Người Dùng -->
+<div id="modal-user" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200">
+        <div class="bg-navy-900 text-white px-5 py-4 flex justify-between items-center">
+            <h3 class="font-bold text-sm flex items-center gap-2" id="modal-user-title">
+                <i class="fa-solid fa-user-plus text-marine-400"></i> Thêm Tài Khoản Mới
+            </h3>
+            <button onclick="closeUserModal()" class="text-slate-400 hover:text-white transition">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+        <form id="form-user" onsubmit="submitUserForm(event)" class="p-5 space-y-3.5">
+            <input type="hidden" id="user_id" name="user_id" value="">
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Tên đăng nhập <span class="text-red-500">*</span></label>
+                <input type="text" id="u_username" name="username" required placeholder="ví dụ: kiemngu_nh" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-marine-500 focus:outline-none">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Họ và tên cán bộ <span class="text-red-500">*</span></label>
+                <input type="text" id="u_fullname" name="full_name" required placeholder="Nguyễn Văn A" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-marine-500 focus:outline-none">
+            </div>
+            <div id="u_pwd_container">
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Mật khẩu ban đầu <span class="text-red-500" id="u_pwd_required">*</span></label>
+                <input type="password" id="u_password" name="password" minlength="6" placeholder="Tối thiểu 6 ký tự" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-marine-500 focus:outline-none">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Phân quyền (Vai trò) <span class="text-red-500">*</span></label>
+                <select id="u_role" name="role" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-marine-500 focus:outline-none">
+                    <option value="viewer">👁️ Chỉ xem (Viewer: Tra cứu bản đồ & danh sách)</option>
+                    <option value="supervisor">🛡️ Giám sát viên (Supervisor: Quét & Tải báo cáo)</option>
+                    <option value="admin">👑 Quản trị viên (Admin: Toàn quyền quản trị)</option>
+                </select>
+            </div>
+            <div class="flex items-center gap-2 pt-1" id="u_active_container">
+                <input type="checkbox" id="u_is_active" name="is_active" checked class="w-4 h-4 text-marine-600 rounded border-slate-300 focus:ring-marine-500">
+                <label for="u_is_active" class="text-xs font-medium text-slate-700">Tài khoản đang hoạt động (Cho phép đăng nhập)</label>
+            </div>
+            <div class="flex justify-end gap-2 pt-3 border-t border-slate-200">
+                <button type="button" onclick="closeUserModal()" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition">Hủy</button>
+                <button type="submit" id="btn-save-user" class="px-4 py-2 text-xs font-bold text-white bg-marine-600 hover:bg-marine-700 rounded-lg shadow transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-floppy-disk"></i> Lưu Tài Khoản
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Reset Mật Khẩu User -->
+<div id="modal-reset-user-pwd" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden border border-slate-200">
+        <div class="bg-amber-600 text-white px-5 py-4 flex justify-between items-center">
+            <h3 class="font-bold text-sm flex items-center gap-2">
+                <i class="fa-solid fa-key"></i> Reset Mật Khẩu Tài Khoản
+            </h3>
+            <button onclick="closeResetUserPwdModal()" class="text-amber-100 hover:text-white transition">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+        <form onsubmit="submitResetUserPwd(event)" class="p-5 space-y-4">
+            <input type="hidden" id="reset_user_id" value="">
+            <div>
+                <p class="text-xs text-slate-600 mb-2">
+                    Đặt lại mật khẩu mới cho tài khoản: <strong id="reset_user_name" class="text-slate-900"></strong>
+                </p>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Mật khẩu mới <span class="text-red-500">*</span></label>
+                <input type="password" id="reset_new_pwd" minlength="6" required placeholder="Tối thiểu 6 ký tự" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:outline-none">
+            </div>
+            <div class="flex justify-end gap-2 pt-2 border-t border-slate-200">
+                <button type="button" onclick="closeResetUserPwdModal()" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition">Hủy</button>
+                <button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-lg shadow transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-check"></i> Xác nhận Reset
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Lịch Sử Hành Trình Tàu Cá -->
+<div id="modal-track-history" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200 flex flex-col max-h-[85vh]">
+        <div class="bg-navy-900 text-white px-5 py-4 flex justify-between items-center shrink-0">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-route text-sky-400"></i>
+                <h3 class="font-bold text-sm" id="track-modal-title">Lịch Sử Vị Trí Hành Trình Tàu</h3>
+            </div>
+            <button onclick="closeTrackHistoryModal()" class="text-slate-400 hover:text-white transition">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+        <div class="p-4 overflow-y-auto flex-1">
+            <div class="text-xs text-slate-500 mb-3" id="track-modal-info">Đang tải dữ liệu hành trình...</div>
+            <div class="overflow-x-auto border border-slate-200 rounded-lg">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="bg-slate-100 text-slate-700 font-semibold uppercase text-[10px]">
+                            <th class="py-2 px-3 text-center w-10">STT</th>
+                            <th class="py-2 px-3">Thời Điểm Ghi Nhận</th>
+                            <th class="py-2 px-3">Vĩ Độ (°N)</th>
+                            <th class="py-2 px-3">Kinh Độ (°E)</th>
+                            <th class="py-2 px-3">Trạng Thái VMS</th>
+                        </tr>
+                    </thead>
+                    <tbody id="track-tbody" class="divide-y divide-slate-200">
+                        <tr><td colspan="5" class="py-4 text-center text-slate-400">Đang tải...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="p-3 bg-slate-50 border-t border-slate-200 flex justify-end shrink-0">
+            <button type="button" onclick="closeTrackHistoryModal()" class="px-4 py-2 text-xs font-semibold bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition">Đóng</button>
         </div>
     </div>
 </div>
@@ -678,15 +926,45 @@
         }
     }
 
+    let currentVesselsPage = 1;
+    const vesselsPerPage = 20;
+    let currentFilteredVessels = [];
+
     function renderVesselsTable(list) {
+        currentFilteredVessels = list || [];
+        const total = currentFilteredVessels.length;
+        const totalPages = Math.max(1, Math.ceil(total / vesselsPerPage));
+        if (currentVesselsPage > totalPages) currentVesselsPage = totalPages;
+        if (currentVesselsPage < 1) currentVesselsPage = 1;
+
+        const startIdx = (currentVesselsPage - 1) * vesselsPerPage;
+        const endIdx = Math.min(startIdx + vesselsPerPage, total);
+        const pagedList = currentFilteredVessels.slice(startIdx, endIdx);
+
+        // Cập nhật nhãn phân trang
+        const pStart = document.getElementById('pag-start');
+        const pEnd = document.getElementById('pag-end');
+        const pTotal = document.getElementById('pag-total');
+        const pInfo = document.getElementById('pag-page-info');
+        const btnPrev = document.getElementById('btn-pag-prev');
+        const btnNext = document.getElementById('btn-pag-next');
+
+        if (pStart) pStart.innerText = total > 0 ? (startIdx + 1) : 0;
+        if (pEnd) pEnd.innerText = endIdx;
+        if (pTotal) pTotal.innerText = total;
+        if (pInfo) pInfo.innerText = `Trang ${currentVesselsPage} / ${totalPages}`;
+        if (btnPrev) btnPrev.disabled = (currentVesselsPage <= 1);
+        if (btnNext) btnNext.disabled = (currentVesselsPage >= totalPages);
+
         const tbody = document.getElementById('vessels-tbody');
-        if (!list || list.length === 0) {
+        if (!pagedList || pagedList.length === 0) {
             tbody.innerHTML = `<tr><td colspan="10" class="py-8 text-center text-slate-400">Không có tàu cá nào phù hợp</td></tr>`;
             return;
         }
 
         let html = '';
-        list.forEach((v, idx) => {
+        pagedList.forEach((v, index) => {
+            const actualIndex = startIdx + index;
             const state = v.state || {};
             let badge = '';
             if (state.current_status === 'NORMAL') {
@@ -705,7 +983,7 @@
 
             html += `
             <tr class="hover:bg-slate-50 transition">
-                <td class="py-3 px-4 text-center font-bold text-slate-400">${idx + 1}</td>
+                <td class="py-3 px-4 text-center font-bold text-slate-400">${actualIndex + 1}</td>
                 <td class="py-3 px-4 font-bold text-marine-700">${v.plate_number}</td>
                 <td class="py-3 px-4 font-semibold text-slate-800">${v.owner_name}</td>
                 <td class="py-3 px-4"><a href="tel:${v.owner_phone || ''}" class="text-marine-600 hover:underline font-medium">${v.owner_phone || '--'}</a></td>
@@ -718,9 +996,13 @@
                     <button onclick="focusVesselOnMap('${v.plate_number}')" class="text-marine-600 hover:text-marine-800 text-xs p-1 mr-1" title="Định vị tàu trên Hải đồ">
                         <i class="fa-solid fa-crosshairs"></i>
                     </button>
+                    <button onclick="openTrackHistoryModal('${v.plate_number}')" class="text-sky-600 hover:text-sky-800 text-xs p-1 mr-1" title="Xem lịch sử vị trí tàu">
+                        <i class="fa-solid fa-route"></i>
+                    </button>
+                    ${(window.currentUser && window.currentUser.role === 'admin') ? `
                     <button onclick="deleteVesselAction('${v.plate_number}')" class="text-slate-400 hover:text-red-600 text-xs p-1" title="Xóa tàu">
                         <i class="fa-solid fa-trash-can"></i>
-                    </button>
+                    </button>` : ''}
                 </td>
             </tr>
             `;
@@ -728,10 +1010,26 @@
         tbody.innerHTML = html;
     }
 
+    function prevVesselsPage() {
+        if (currentVesselsPage > 1) {
+            currentVesselsPage--;
+            renderVesselsTable(currentFilteredVessels);
+        }
+    }
+
+    function nextVesselsPage() {
+        const totalPages = Math.ceil(currentFilteredVessels.length / vesselsPerPage);
+        if (currentVesselsPage < totalPages) {
+            currentVesselsPage++;
+            renderVesselsTable(currentFilteredVessels);
+        }
+    }
+
     function filterVessels() {
         const q = document.getElementById('vessel-search').value.toLowerCase().trim();
         const statusFilter = document.getElementById('vessel-status-filter').value;
 
+        currentVesselsPage = 1; // Reset về trang 1 khi lọc
         const filtered = globalVessels.filter(v => {
             const matchQ = (
                 (v.plate_number && v.plate_number.toLowerCase().includes(q)) ||
@@ -765,12 +1063,21 @@
         } else if (tab === 'map') {
             document.getElementById('view-map').classList.remove('hidden');
             initLeafletMap();
+        } else if (tab === 'chart') {
+            document.getElementById('view-chart').classList.remove('hidden');
+            loadStatsChart();
         } else if (tab === 'alerts') {
             document.getElementById('view-alerts').classList.remove('hidden');
             loadAlertHistory();
         } else if (tab === 'emails') {
             document.getElementById('view-emails').classList.remove('hidden');
             loadSentEmails();
+        } else if (tab === 'users') {
+            const el = document.getElementById('view-users');
+            if (el) {
+                el.classList.remove('hidden');
+                loadUsers();
+            }
         }
     }
 
@@ -1114,8 +1421,18 @@
                         📍 WGS84: <strong>${lat.toFixed(5)}°N, ${lng.toFixed(5)}°E</strong><br>
                         🧭 Hải đồ: <strong>${latDMS} - ${lngDMS}</strong>
                     </div>
+                    <button type="button" onclick="openTrackHistoryModal('${v.plate_number}')" style="margin-top: 6px; width: 100%; background: #0284c7; color: white; border: none; padding: 5px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                        <span>🗺️ Xem Lịch Sử Vị Trí Tàu</span>
+                    </button>
                 </div>
             `);
+
+            // Tooltip hover nhanh hiển thị ngay lập tức
+            marker.bindTooltip(`<b>${v.plate_number}</b> - ${v.owner_name} (${statusText})`, { 
+                direction: 'top', 
+                offset: [0, -10],
+                className: 'vms-hover-tooltip'
+            });
 
             markerClusterGroup.addLayer(marker);
             mapMarkers.push(marker);
@@ -1374,6 +1691,366 @@
             loadSentEmails();
         } catch (e) {
             alert("Lỗi: " + e);
+        }
+    }
+
+    // ============================================================
+    // Xuất Dữ Liệu Excel
+    // ============================================================
+
+    function exportVesselsExcel() {
+        showToast("Đang tải danh sách tàu cá ra file Excel...", "info");
+        window.location.href = "/api/vessels/export-excel";
+    }
+
+    function exportAlertsExcel() {
+        showToast("Đang tải nhật ký cảnh báo ra file Excel...", "info");
+        window.location.href = "/api/alerts/export-excel";
+    }
+
+    // ============================================================
+    // Lịch Sử Hành Trình Tàu (Track History)
+    // ============================================================
+
+    async function openTrackHistoryModal(plate) {
+        const modal = document.getElementById('modal-track-history');
+        if (!modal) return;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.getElementById('track-modal-title').innerHTML = `<i class="fa-solid fa-route text-sky-400 mr-2"></i>Lịch Sử Tọa Độ: <span class="text-amber-400">${plate}</span>`;
+        const infoEl = document.getElementById('track-modal-info');
+        const tbody = document.getElementById('track-tbody');
+        infoEl.innerText = "Đang truy vấn cơ sở dữ liệu VMS...";
+        tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-slate-400"><i class="fa-solid fa-spinner animate-spin mr-2"></i>Đang tải dữ liệu...</td></tr>';
+
+        try {
+            const res = await fetch(`/api/vessels/${encodeURIComponent(plate)}/track-history`);
+            const data = await res.json();
+            if (!res.ok) {
+                infoEl.innerText = "Không thể tải lịch sử tọa độ";
+                tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-red-500">Lỗi nạp dữ liệu</td></tr>';
+                return;
+            }
+
+            infoEl.innerHTML = `Đã ghi nhận <strong>${data.total_points} điểm tọa độ</strong> trong hành trình giám sát của tàu <strong>${data.ship_name || plate}</strong>.`;
+            if (data.track.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-slate-400">Chưa có lịch sử tọa độ hành trình nào được ghi nhận cho tàu này.</td></tr>';
+                return;
+            }
+
+            let html = '';
+            data.track.forEach((pt, i) => {
+                html += `
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="py-2 px-3 text-center text-slate-400 font-bold">${i + 1}</td>
+                    <td class="py-2 px-3 text-slate-700 font-medium">${pt.recorded_at || '--'}</td>
+                    <td class="py-2 px-3 font-mono font-bold text-marine-700">${pt.latitude.toFixed(5)}°N</td>
+                    <td class="py-2 px-3 font-mono font-bold text-marine-700">${pt.longitude.toFixed(5)}°E</td>
+                    <td class="py-2 px-3"><span class="px-2 py-0.5 bg-slate-100 rounded text-[11px] font-semibold text-slate-600">${pt.ship_state || 'Bình thường'}</span></td>
+                </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        } catch (e) {
+            infoEl.innerText = "Lỗi kết nối máy chủ";
+            tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-red-500">Lỗi: ${e}</td></tr>`;
+        }
+    }
+
+    function closeTrackHistoryModal() {
+        const modal = document.getElementById('modal-track-history');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+    }
+
+    // ============================================================
+    // Biểu Đồ Xu Hướng 7 Ngày (Chart.js)
+    // ============================================================
+
+    let vmsChartInstance = null;
+    async function loadStatsChart() {
+        try {
+            const res = await fetch('/api/dashboard/stats-chart');
+            const data = await res.json();
+
+            if (data.summary) {
+                document.getElementById('chart-kpi-lost').innerText = `${data.summary.lost_today} tàu`;
+                document.getElementById('chart-kpi-normal').innerText = `${data.summary.normal_today} tàu`;
+                document.getElementById('chart-kpi-recovered').innerText = `${data.summary.recovered_today} tàu`;
+            }
+
+            const ctx = document.getElementById('vms-trend-chart');
+            if (!ctx) return;
+
+            if (vmsChartInstance) {
+                vmsChartInstance.destroy();
+            }
+
+            vmsChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: [
+                        {
+                            label: 'Tàu mất kết nối (> 2h)',
+                            data: data.lost,
+                            borderColor: '#ef4444',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.35,
+                            pointRadius: 5,
+                            pointBackgroundColor: '#ef4444'
+                        },
+                        {
+                            label: 'Tàu hoạt động bình thường (< 2h)',
+                            data: data.normal,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.05)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.35,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#10b981'
+                        },
+                        {
+                            label: 'Tàu vừa khắc phục (Recovery)',
+                            data: data.recovered,
+                            borderColor: '#0284c7',
+                            backgroundColor: 'rgba(2, 132, 199, 0.1)',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            fill: false,
+                            tension: 0.3,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#0284c7'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                font: { size: 12, weight: 'bold' },
+                                usePointStyle: true
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            padding: 10
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { precision: 0 }
+                        }
+                    }
+                }
+            });
+        } catch (e) {
+            console.error("Lỗi vẽ biểu đồ:", e);
+        }
+    }
+
+    // ============================================================
+    // Quản Lý Người Dùng (Admin Only)
+    // ============================================================
+
+    async function loadUsers() {
+        const tbody = document.getElementById('users-tbody');
+        if (!tbody) return;
+        tbody.innerHTML = '<tr><td colspan="7" class="py-6 text-center text-slate-400"><i class="fa-solid fa-spinner animate-spin mr-2"></i>Đang tải danh sách người dùng...</td></tr>';
+        try {
+            const res = await fetch('/api/users');
+            if (res.status === 401 || res.status === 403) {
+                tbody.innerHTML = '<tr><td colspan="7" class="py-6 text-center text-red-500 font-semibold">Chỉ Quản trị viên (Admin) mới có quyền xem danh sách người dùng.</td></tr>';
+                return;
+            }
+            const users = await res.json();
+            if (!users || users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="py-6 text-center text-slate-400">Chưa có tài khoản người dùng nào.</td></tr>';
+                return;
+            }
+
+            let html = '';
+            users.forEach((u, idx) => {
+                let roleBadge = '';
+                if (u.role === 'admin') {
+                    roleBadge = '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800"><i class="fa-solid fa-crown mr-1 text-[10px]"></i> Admin</span>';
+                } else if (u.role === 'supervisor') {
+                    roleBadge = '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-sky-100 text-sky-800"><i class="fa-solid fa-user-shield mr-1 text-[10px]"></i> Giám Sát</span>';
+                } else {
+                    roleBadge = '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700"><i class="fa-solid fa-eye mr-1 text-[10px]"></i> Chỉ Xem</span>';
+                }
+
+                let statusBadge = u.is_active ? 
+                    '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-800"><i class="fa-solid fa-circle text-[8px] mr-1 text-emerald-500"></i> Hoạt động</span>' :
+                    '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-800"><i class="fa-solid fa-ban text-[8px] mr-1"></i> Bị khóa</span>';
+
+                const lastLoginStr = u.last_login ? u.last_login.replace('T', ' ').substring(0, 19) : '<span class="text-slate-400 italic">Chưa đăng nhập</span>';
+
+                html += `
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="py-3 px-4 text-center font-bold text-slate-400">${idx + 1}</td>
+                    <td class="py-3 px-4 font-bold text-slate-900">${u.username}</td>
+                    <td class="py-3 px-4 font-semibold text-slate-800">${u.full_name}</td>
+                    <td class="py-3 px-4 text-center">${roleBadge}</td>
+                    <td class="py-3 px-4 text-center">${statusBadge}</td>
+                    <td class="py-3 px-4 text-xs text-slate-500">${lastLoginStr}</td>
+                    <td class="py-3 px-4 text-center whitespace-nowrap">
+                        <button onclick="openEditUserModal(${u.id}, '${u.username}', '${u.full_name}', '${u.role}', ${u.is_active})" class="text-blue-600 hover:text-blue-800 p-1 mr-1.5 text-xs font-semibold" title="Sửa thông tin / vai trò">
+                            <i class="fa-solid fa-pen-to-square"></i> Sửa
+                        </button>
+                        <button onclick="openResetUserPwdModal(${u.id}, '${u.username}')" class="text-amber-600 hover:text-amber-800 p-1 mr-1.5 text-xs font-semibold" title="Reset mật khẩu">
+                            <i class="fa-solid fa-key"></i> Reset
+                        </button>
+                        ${u.username !== (window.currentUser ? window.currentUser.sub : '') ? `
+                        <button onclick="deleteUserAction(${u.id}, '${u.username}')" class="text-slate-400 hover:text-red-600 p-1 text-xs font-semibold" title="Xóa tài khoản">
+                            <i class="fa-solid fa-trash-can"></i> Xóa
+                        </button>` : ''}
+                    </td>
+                </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        } catch (e) {
+            tbody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-red-500">Lỗi kết nối: ${e}</td></tr>`;
+        }
+    }
+
+    function openAddUserModal() {
+        document.getElementById('modal-user-title').innerHTML = '<i class="fa-solid fa-user-plus text-marine-400"></i> Thêm Tài Khoản Mới';
+        document.getElementById('user_id').value = '';
+        document.getElementById('u_username').value = '';
+        document.getElementById('u_username').disabled = false;
+        document.getElementById('u_fullname').value = '';
+        document.getElementById('u_password').value = '';
+        document.getElementById('u_pwd_required').classList.remove('hidden');
+        document.getElementById('u_password').required = true;
+        document.getElementById('u_role').value = 'viewer';
+        document.getElementById('u_is_active').checked = true;
+        document.getElementById('modal-user').classList.remove('hidden');
+    }
+
+    function openEditUserModal(id, username, fullname, role, isActive) {
+        document.getElementById('modal-user-title').innerHTML = '<i class="fa-solid fa-user-pen text-marine-400"></i> Sửa Thông Tin Tài Khoản';
+        document.getElementById('user_id').value = id;
+        document.getElementById('u_username').value = username;
+        document.getElementById('u_username').disabled = true;
+        document.getElementById('u_fullname').value = fullname;
+        document.getElementById('u_password').value = '';
+        document.getElementById('u_pwd_required').classList.add('hidden');
+        document.getElementById('u_password').required = false;
+        document.getElementById('u_role').value = role;
+        document.getElementById('u_is_active').checked = isActive;
+        document.getElementById('modal-user').classList.remove('hidden');
+    }
+
+    function closeUserModal() {
+        document.getElementById('modal-user').classList.add('hidden');
+    }
+
+    async function submitUserForm(e) {
+        e.preventDefault();
+        const userId = document.getElementById('user_id').value;
+        const username = document.getElementById('u_username').value.trim();
+        const fullname = document.getElementById('u_fullname').value.trim();
+        const password = document.getElementById('u_password').value;
+        const role = document.getElementById('u_role').value;
+        const isActive = document.getElementById('u_is_active').checked;
+        const btn = document.getElementById('btn-save-user');
+        btn.disabled = true;
+
+        try {
+            if (!userId) {
+                const res = await fetch('/api/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, full_name: fullname, password, role, is_active: isActive })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast(`Đã tạo tài khoản "${username}" thành công!`, 'success');
+                    closeUserModal();
+                    loadUsers();
+                } else {
+                    showToast(data.detail || 'Lỗi khi tạo tài khoản', 'error');
+                }
+            } else {
+                const res = await fetch(`/api/users/${userId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ full_name: fullname, role, is_active: isActive })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast(`Đã cập nhật tài khoản "${username}" thành công!`, 'success');
+                    closeUserModal();
+                    loadUsers();
+                } else {
+                    showToast(data.detail || 'Lỗi khi cập nhật tài khoản', 'error');
+                }
+            }
+        } catch (err) {
+            showToast('Lỗi kết nối máy chủ', 'error');
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    function openResetUserPwdModal(userId, username) {
+        document.getElementById('reset_user_id').value = userId;
+        document.getElementById('reset_user_name').innerText = username;
+        document.getElementById('reset_new_pwd').value = '';
+        document.getElementById('modal-reset-user-pwd').classList.remove('hidden');
+    }
+
+    function closeResetUserPwdModal() {
+        document.getElementById('modal-reset-user-pwd').classList.add('hidden');
+    }
+
+    async function submitResetUserPwd(e) {
+        e.preventDefault();
+        const userId = document.getElementById('reset_user_id').value;
+        const newPwd = document.getElementById('reset_new_pwd').value;
+        try {
+            const res = await fetch(`/api/users/${userId}/reset-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ new_password: newPwd })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                showToast('Reset mật khẩu thành công!', 'success');
+                closeResetUserPwdModal();
+            } else {
+                showToast(data.detail || 'Lỗi reset mật khẩu', 'error');
+            }
+        } catch (err) {
+            showToast('Lỗi kết nối máy chủ', 'error');
+        }
+    }
+
+    async function deleteUserAction(userId, username) {
+        if (!confirm(`Bạn có chắc chắn muốn xóa tài khoản "${username}" khỏi hệ thống?`)) return;
+        try {
+            const res = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (res.ok) {
+                showToast(`Đã xóa tài khoản "${username}" thành công!`, 'success');
+                loadUsers();
+            } else {
+                showToast(data.detail || 'Lỗi khi xóa tài khoản', 'error');
+            }
+        } catch (err) {
+            showToast('Lỗi kết nối máy chủ', 'error');
         }
     }
 </script>

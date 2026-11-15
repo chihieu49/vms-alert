@@ -8,19 +8,20 @@ import webbrowser
 import threading
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.database import engine, Base, SessionLocal
-from app.api import dashboard_router, vessels_router, alerts_router
+from app.api import dashboard_router, vessels_router, alerts_router, auth_router
 from app.services.scheduler import vms_scheduler
 from app.services.keep_alive import keep_alive_service
-from app.models import Vessel, VesselState, StateEnum
-from app.crud import create_or_update_vessel
+from app.models import Vessel, VesselState, StateEnum, User
+from app.crud import create_or_update_vessel, seed_default_users
 from app.schemas import VesselCreate
+from app.auth import get_current_user_from_request
 
 # Khởi tạo bảng Database
 Base.metadata.create_all(bind=engine)
@@ -85,6 +86,8 @@ def seed_initial_vessels():
         for s in sample_ships:
             create_or_update_vessel(db, VesselCreate(**s))
         print(f"[INIT] Đã nạp sẵn {len(sample_ships)} tàu cá mẫu chiều dài >= 15m.")
+    # Khởi tạo tài khoản người dùng mặc định (admin, giamsat, khach)
+    seed_default_users(db)
     db.close()
 
 seed_initial_vessels()
@@ -120,6 +123,7 @@ app.add_middleware(
 templates = Jinja2Templates(directory=str(settings.BASE_DIR / "app" / "templates"))
 
 # Đăng ký các router
+app.include_router(auth_router)
 app.include_router(dashboard_router)
 app.include_router(vessels_router)
 app.include_router(alerts_router)
@@ -137,8 +141,15 @@ def health_check():
 
 @app.get("/", response_class=HTMLResponse)
 def index_page(request: Request):
-    """Trang chủ Dashboard"""
-    return templates.TemplateResponse("index.html", {"request": request})
+    """Trang chủ Dashboard (Yêu cầu đăng nhập)"""
+    user = get_current_user_from_request(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "user": user,
+        "current_user": user
+    })
 
 def get_local_ip():
     """Lấy địa chỉ IP nội bộ của máy trong mạng LAN (Wi-Fi)"""

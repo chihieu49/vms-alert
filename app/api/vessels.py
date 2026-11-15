@@ -5,20 +5,23 @@ Quản lý danh sách tàu cá, Import Excel / CSV / JSON (Lọc chiều dài >=
 """
 import io
 import json
+from datetime import datetime
 import pandas as pd
 from typing import List, Optional
 from pydantic import BaseModel
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Response, Query, Request
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Vessel, VesselState
+from app.models import Vessel, VesselState, StateEnum
 from app.schemas import VesselCreate, VesselOut
 from app.crud import (
     get_all_vessels, get_vessel_by_plate, create_or_update_vessel,
-    delete_vessel, normalize_plate, normalize_vietnam_phone
+    delete_vessel, normalize_plate, normalize_vietnam_phone,
+    get_vessels_with_pagination, get_vessel_track_history
 )
+from app.auth import get_current_user_from_request, require_supervisor_or_admin, require_admin
 from app.config import settings
 from app.services.vms_client import vms_client
 from app.services.scheduler import vms_scheduler
@@ -35,6 +38,127 @@ class GSTCCookieRequest(BaseModel):
 @router.get("", response_model=List[VesselOut])
 def list_vessels(db: Session = Depends(get_db)):
     return get_all_vessels(db)
+
+@router.get("/paginated")
+def list_vessels_paginated(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
+    search: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    """Lấy danh sách tàu cá hỗ trợ phân trang, tìm kiếm và lọc trạng thái"""
+    res = get_vessels_with_pagination(db, skip=skip, limit=limit, search=search, status_filter=status)
+    # Serialize items
+    items_out = []
+    for v in res["items"]:
+        items_out.append({
+            "id": v.id,
+            "plate_number": v.plate_number,
+            "ship_name": v.ship_name or v.plate_number,
+            "owner_name": v.owner_name,
+            "owner_phone": v.owner_phone or "",
+            "owner_address": v.owner_address or "",
+            "chieudaitoanbo": v.chieudaitoanbo,
+            "congsuat": v.congsuat or 0.0,
+            "device_id": v.device_id or "",
+            "created_at": v.created_at.isoformat() if v.created_at else None,
+            "updated_at": v.updated_at.isoformat() if v.updated_at else None,
+            "state": {
+                "current_status": v.state.current_status.value if v.state else "NORMAL",
+                "is_alerted": v.state.is_alerted if v.state else False,
+                "consecutive_lost_cycles": v.state.consecutive_lost_cycles if v.state else 0,
+                "last_signal_time": v.state.last_signal_time.isoformat() if v.state and v.state.last_signal_time else None,
+                "last_latitude": v.state.last_latitude if v.state else None,
+                "last_longitude": v.state.last_longitude if v.state else None
+            } if v.state else None
+        })
+    return {
+        "items": items_out,
+        "total": res["total"],
+        "skip": res["skip"],
+        "limit": res["limit"]
+    }
+
+@router.get("/export-excel")
+def export_vessels_excel(db: Session = Depends(get_db)):
+    """Xuất toàn bộ danh sách tàu cá và trạng thái kết nối VMS ra file Excel (.xlsx)"""
+    vessels = get_all_vessels(db)
+    rows = []
+    for idx, v in enumerate(vessels, start=1):
+        st = v.state
+        status_label = "Bình thường (< 2h)"
+        lost_cycles = 0
+        last_sig = "Chưa có"
+        lat = ""
+        lng = ""
+        if st:
+            lost_cycles = st.consecutive_lost_cycles
+            if st.current_status == StateEnum.LOST_SIGNAL:
+                status_label = f"MẤT KẾT NỐI ({lost_cycles} chu kỳ)"
+            elif st.current_status == StateEnum.RECOVERED:
+                status_label = "Đã khắc phục"
+            if st.last_signal_time:
+                last_sig = st.last_signal_time.strftime("%d/%m/%Y %H:%M:%S")
+            if st.last_latitude:
+                lat = f"{st.last_latitude:.5f}°N"
+            if st.last_longitude:
+                lng = f"{st.last_longitude:.5f}°E"
+
+        rows.append({
+            "STT": idx,
+            "Số Đăng Ký (Biển số)": v.plate_number,
+            "Tên Tàu": v.ship_name or v.plate_number,
+            "Tên Chủ Tàu": v.owner_name,
+            "Số Điện Thoại": v.owner_phone or "",
+            "Địa Chỉ Thường Trú": v.owner_address or "",
+            "Chiều Dài Lmax (m)": v.chieudaitoanbo,
+            "Công Suất (CV)": v.congsuat or "",
+            "Mã Thiết Bị VMS": v.device_id or "",
+            "Trạng Thái Kết Nối": status_label,
+            "Số Chu Kỳ Mất": lost_cycles,
+            "Vĩ Độ Gần Nhất": lat,
+            "Kinh Độ Gần Nhất": lng,
+            "Thời Điểm Nhận Tín Hiệu Cuối": last_sig
+        })
+
+    df = pd.DataFrame(rows)
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Danh_Sach_Tau_VMS')
+    output.seek(0)
+
+    filename = f"Danh_sach_tau_ca_VMS_NHVN_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+    return Response(
+        content=output.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+@router.get("/{plate}/track-history")
+def get_vessel_track(plate: str, limit: int = 50, db: Session = Depends(get_db)):
+    """Lấy lịch sử tọa độ di chuyển của tàu để hiển thị hành trình trên bản đồ"""
+    norm = normalize_plate(plate)
+    vessel = get_vessel_by_plate(db, norm)
+    if not vessel:
+        raise HTTPException(status_code=404, detail="Không tìm thấy tàu")
+    
+    positions = get_vessel_track_history(db, vessel.id, limit=limit)
+    return {
+        "plate_number": vessel.plate_number,
+        "ship_name": vessel.ship_name,
+        "total_points": len(positions),
+        "track": [
+            {
+                "latitude": p.latitude,
+                "longitude": p.longitude,
+                "recorded_at": p.recorded_at.strftime("%Y-%m-%d %H:%M:%S") if p.recorded_at else None,
+                "ship_state": p.ship_state or "Bình thường",
+                "distance_to_boundary": p.distance_to_boundary
+            }
+            for p in positions
+        ]
+    }
 
 @router.post("", response_model=VesselOut)
 def add_vessel(vessel_in: VesselCreate, db: Session = Depends(get_db)):

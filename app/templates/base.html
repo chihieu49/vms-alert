@@ -20,6 +20,9 @@
         }
     </script>
 
+    <!-- Alpine.js - Dùng cho Toast notification và reactive UI -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
     <!-- HTMX -->
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 
@@ -35,36 +38,140 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
+    <!-- Chart.js - Vẽ biểu đồ thống kê 7 ngày -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
     {% block head %}{% endblock %}
+
+    <style>
+        /* =================================================================
+           TOAST NOTIFICATION ANIMATIONS
+           ================================================================= */
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to   { transform: translateX(0);    opacity: 1; }
+        }
+        @keyframes fadeOutRight {
+            from { transform: translateX(0);    opacity: 1; }
+            to   { transform: translateX(120%); opacity: 0; }
+        }
+        .toast-enter  { animation: slideInRight 0.35s ease-out forwards; }
+        .toast-leave  { animation: fadeOutRight 0.35s ease-in  forwards; }
+    </style>
 </head>
 <body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col font-sans">
 
+    <!-- ================================================================
+         TOAST NOTIFICATION CONTAINER (góc phải dưới)
+         Dùng Alpine.js để quản lý danh sách toast, auto-dismiss 4 giây
+         ================================================================ -->
+    <div
+        x-data="toastManager()"
+        x-init="init()"
+        @show-toast.window="addToast($event.detail)"
+        class="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2 w-80 max-w-[90vw] pointer-events-none"
+        aria-live="polite"
+    >
+        <template x-for="toast in toasts" :key="toast.id">
+            <div
+                :class="[
+                    'pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-xl shadow-2xl border text-sm font-medium transition-all',
+                    toast.leaving ? 'toast-leave' : 'toast-enter',
+                    toast.type === 'success' ? 'bg-emerald-50 border-emerald-300 text-emerald-900' :
+                    toast.type === 'error'   ? 'bg-red-50 border-red-300 text-red-900' :
+                    toast.type === 'warning' ? 'bg-amber-50 border-amber-300 text-amber-900' :
+                                              'bg-blue-50 border-blue-300 text-blue-900'
+                ]"
+            >
+                <!-- Icon theo loại toast -->
+                <span class="mt-0.5 shrink-0 text-lg"
+                    :class="{
+                        'text-emerald-500': toast.type === 'success',
+                        'text-red-500':     toast.type === 'error',
+                        'text-amber-500':   toast.type === 'warning',
+                        'text-blue-500':    toast.type === 'info'
+                    }"
+                >
+                    <i :class="{
+                        'fa-solid fa-circle-check':     toast.type === 'success',
+                        'fa-solid fa-circle-xmark':     toast.type === 'error',
+                        'fa-solid fa-triangle-exclamation': toast.type === 'warning',
+                        'fa-solid fa-circle-info':      toast.type === 'info'
+                    }"></i>
+                </span>
+                <!-- Nội dung -->
+                <div class="flex-1 leading-snug" x-text="toast.message"></div>
+                <!-- Nút đóng -->
+                <button @click="removeToast(toast.id)" class="shrink-0 text-slate-400 hover:text-slate-700 mt-0.5">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+        </template>
+    </div>
+
     <!-- Top Gov Bar -->
-    <div class="bg-navy-900 text-slate-300 text-xs py-1.5 px-6 border-b border-slate-800 flex justify-between items-center">
+    <div class="bg-navy-900 text-slate-300 text-xs py-1.5 px-3 sm:px-6 border-b border-slate-800 flex justify-between items-center flex-wrap gap-2">
         <div class="flex items-center space-x-2">
             <i class="fa-solid fa-anchor text-amber-400"></i>
             <span class="font-bold tracking-wide text-white">TRẠM KIỂM NGƯ NINH HÒA - VẠN NINH</span>
-            <span class="text-slate-500">|</span>
-            <span class="text-slate-400">CHI CỤC THỦY SẢN VÀ BIỂN ĐẢO TỈNH KHÁNH HÒA</span>
+            <span class="text-slate-500 hidden sm:inline">|</span>
+            <span class="text-slate-400 hidden sm:inline">CHI CỤC THỦY SẢN VÀ BIỂN ĐẢO TỈNH KHÁNH HÒA</span>
         </div>
-        <div class="flex items-center space-x-4">
+        <div class="flex items-center space-x-2 sm:space-x-3 flex-wrap">
             <button onclick="openGSTCSyncModal()" class="flex items-center space-x-1.5 hover:text-white transition cursor-pointer bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700" title="Bấm để kiểm tra và đồng bộ tọa độ với Tổng cục Thủy sản">
                 <span id="top-gstc-dot" class="w-2 h-2 rounded-full bg-amber-400"></span>
                 <span id="top-gstc-text">GSTC: Kiểm tra kết nối...</span>
             </button>
-            <span id="live-clock" class="font-mono text-slate-400">--:--:--</span>
+
+            <!-- User Menu -->
+            {% if user %}
+            <div class="relative inline-block text-left" id="user-menu-wrapper">
+                <button type="button" onclick="toggleUserDropdown()" class="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white px-2.5 py-0.5 rounded border border-slate-700 transition text-xs font-semibold">
+                    <i class="fa-solid fa-circle-user text-marine-400"></i>
+                    <span>{{ user.full_name or user.sub }}</span>
+                    {% if user.role == 'admin' %}
+                    <span class="bg-amber-500/20 text-amber-400 text-[10px] px-1 rounded font-bold uppercase">Admin</span>
+                    {% elif user.role == 'supervisor' %}
+                    <span class="bg-sky-500/20 text-sky-400 text-[10px] px-1 rounded font-bold uppercase">Giám Sát</span>
+                    {% else %}
+                    <span class="bg-slate-600/40 text-slate-300 text-[10px] px-1 rounded uppercase">Chỉ Xem</span>
+                    {% endif %}
+                    <i class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
+                </button>
+
+                <!-- Dropdown Menu -->
+                <div id="user-dropdown-menu" class="hidden absolute right-0 mt-1 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-xl py-1 z-[999]">
+                    <div class="px-3 py-1.5 border-b border-slate-700 text-[11px] text-slate-400">
+                        Đăng nhập: <strong class="text-white">{{ user.sub }}</strong>
+                    </div>
+                    <button type="button" onclick="openChangePasswordModal()" class="w-full text-left px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-700 flex items-center gap-2">
+                        <i class="fa-solid fa-key text-amber-400 w-4"></i> Đổi mật khẩu
+                    </button>
+                    {% if user.role == 'admin' %}
+                    <button type="button" onclick="switchTab('users')" class="w-full text-left px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-700 flex items-center gap-2">
+                        <i class="fa-solid fa-users-gear text-marine-400 w-4"></i> Quản lý người dùng
+                    </button>
+                    {% endif %}
+                    <a href="/logout" class="block w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10 flex items-center gap-2 border-t border-slate-700 mt-1">
+                        <i class="fa-solid fa-arrow-right-from-bracket w-4"></i> Đăng xuất
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+
+            <span id="live-clock" class="font-mono text-slate-400 text-xs">--:--:--</span>
         </div>
     </div>
 
     <!-- Main Navigation Header -->
     <header class="bg-navy-800 text-white shadow-lg border-b border-slate-700">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div class="flex items-center space-x-3">
-                <div class="bg-marine-600 text-white p-2.5 rounded-xl shadow-md">
+                <div class="bg-marine-600 text-white p-2.5 rounded-xl shadow-md shrink-0">
                     <i class="fa-solid fa-ship text-2xl"></i>
                 </div>
                 <div>
-                    <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                    <h1 class="text-base sm:text-xl font-bold tracking-tight text-white flex items-center gap-2">
                         HỆ THỐNG GIÁM SÁT TÀU CÁ CHUYÊN DỤNG (VMS ALERT)
                     </h1>
                     <p class="text-xs text-slate-400">
@@ -73,8 +180,8 @@
                 </div>
             </div>
 
-            <!-- Action Toolbar -->
-            <div class="flex items-center space-x-3">
+            <!-- Action Toolbar - responsive: wrap trên mobile -->
+            <div class="flex flex-wrap items-center gap-2">
                 <div class="text-right hidden sm:block mr-2">
                     <div class="text-[11px] text-slate-400">Lần quét tiếp theo:</div>
                     <div id="countdown-badge" class="font-mono text-amber-400 font-bold text-sm bg-slate-800/80 px-2.5 py-0.5 rounded border border-amber-400/30">
@@ -82,45 +189,187 @@
                     </div>
                 </div>
 
-                <button onclick="openGSTCSyncModal()" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-sm px-3.5 py-2 rounded-lg shadow-md transition flex items-center gap-1.5 border border-blue-400/40" title="Đồng bộ tọa độ GPS thực tế với Tổng cục Thủy sản">
+                <button onclick="openGSTCSyncModal()" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs sm:text-sm px-3 py-2 rounded-lg shadow-md transition flex items-center gap-1.5 border border-blue-400/40" title="Đồng bộ tọa độ GPS thực tế với Tổng cục Thủy sản">
                     <i class="fa-solid fa-satellite-dish text-amber-300"></i>
-                    <span>Đồng Bộ GSTC</span>
+                    <span class="hidden sm:inline">Đồng Bộ GSTC</span>
                     <span id="nav-gstc-badge" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
                 </button>
 
-                <button onclick="triggerManualScan()" class="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold text-sm px-4 py-2 rounded-lg shadow transition flex items-center gap-2">
-                    <i class="fa-solid fa-rotate" id="scan-icon"></i> Quét Ngay
+                <button onclick="triggerManualScan()" id="btn-scan" class="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold text-xs sm:text-sm px-3 sm:px-4 py-2 rounded-lg shadow transition flex items-center gap-2">
+                    <i class="fa-solid fa-rotate" id="scan-icon"></i>
+                    <span class="hidden xs:inline">Quét Ngay</span>
                 </button>
 
-                <button onclick="openImportModal()" class="bg-slate-700 hover:bg-slate-600 text-white text-sm px-3.5 py-2 rounded-lg border border-slate-600 shadow transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-file-import text-emerald-400"></i> Nhập File
+                <button onclick="openImportModal()" class="bg-slate-700 hover:bg-slate-600 text-white text-xs sm:text-sm px-3 py-2 rounded-lg border border-slate-600 shadow transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-import text-emerald-400"></i>
+                    <span class="hidden sm:inline">Nhập File</span>
                 </button>
 
-                <button onclick="openAddVesselModal()" class="bg-marine-600 hover:bg-marine-700 text-white text-sm px-3.5 py-2 rounded-lg shadow transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-plus"></i> Thêm Tàu
+                <button onclick="openAddVesselModal()" class="bg-marine-600 hover:bg-marine-700 text-white text-xs sm:text-sm px-3 py-2 rounded-lg shadow transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-plus"></i>
+                    <span class="hidden sm:inline">Thêm Tàu</span>
                 </button>
             </div>
         </div>
     </header>
 
     <!-- Main Container -->
-    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
         {% block content %}{% endblock %}
     </main>
 
     <!-- Footer -->
-    <footer class="bg-slate-900 text-slate-500 text-xs py-4 border-t border-slate-800 text-center">
+    <footer class="bg-slate-900 text-slate-500 text-xs py-4 border-t border-slate-800 text-center px-4">
         Trạm Kiểm Ngư Ninh Hòa - Vạn Ninh • Chi cục Thủy sản và Biển đảo tỉnh Khánh Hòa • Hệ thống Giám sát Hành trình Tàu cá ≥ 15 mét • Email thông báo: adminnhvn@gmail.com
     </footer>
 
-    <!-- Clock Script -->
+    <!-- ================================================================
+         ALPINE.JS TOAST MANAGER
+         ================================================================ -->
     <script>
+        // Hàm tiện ích toàn cục để hiện toast từ bất kỳ đâu
+        function showToast(message, type = 'info') {
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: { message, type } }));
+        }
+
+        // Alpine component quản lý toast
+        function toastManager() {
+            return {
+                toasts: [],
+                _counter: 0,
+                init() { /* Khởi tạo khi Alpine mount */ },
+                addToast({ message, type = 'info' }) {
+                    const id = ++this._counter;
+                    this.toasts.push({ id, message, type, leaving: false });
+                    // Tự động dismiss sau 4 giây
+                    setTimeout(() => this.removeToast(id), 4000);
+                },
+                removeToast(id) {
+                    const toast = this.toasts.find(t => t.id === id);
+                    if (!toast || toast.leaving) return;
+                    toast.leaving = true;
+                    // Đợi animation xong rồi xóa khỏi mảng
+                    setTimeout(() => {
+                        this.toasts = this.toasts.filter(t => t.id !== id);
+                    }, 350);
+                }
+            };
+        }
+    </script>
+
+    <!-- Modal Đổi Mật Khẩu Cá Nhân -->
+    <div id="modal-change-password" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-[9999] p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-200">
+            <div class="bg-navy-900 text-white px-5 py-4 flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-key text-amber-400"></i>
+                    <h3 class="font-bold text-sm">Đổi Mật Khẩu Cá Nhân</h3>
+                </div>
+                <button type="button" onclick="closeChangePasswordModal()" class="text-slate-400 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <form onsubmit="submitChangePassword(event)" class="p-5 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Mật khẩu hiện tại <span class="text-red-500">*</span></label>
+                    <input type="password" id="cp_current_pwd" required class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-marine-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Mật khẩu mới (tối thiểu 6 ký tự) <span class="text-red-500">*</span></label>
+                    <input type="password" id="cp_new_pwd" minlength="6" required class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-marine-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Xác nhận mật khẩu mới <span class="text-red-500">*</span></label>
+                    <input type="password" id="cp_confirm_pwd" minlength="6" required class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-marine-500 focus:outline-none">
+                </div>
+                <div class="flex justify-end gap-2 pt-2 border-t border-slate-200">
+                    <button type="button" onclick="closeChangePasswordModal()" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition">Hủy</button>
+                    <button type="submit" id="btn-submit-cp" class="px-4 py-2 text-xs font-bold text-white bg-marine-600 hover:bg-marine-700 rounded-lg shadow transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-check"></i> Lưu mật khẩu mới
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- User & Clock Script -->
+    <script>
+        window.currentUser = {{ user | tojson | safe if user else 'null' }};
+
+        function toggleUserDropdown() {
+            const m = document.getElementById('user-dropdown-menu');
+            if (m) m.classList.toggle('hidden');
+        }
+
+        document.addEventListener('click', (e) => {
+            const wrap = document.getElementById('user-menu-wrapper');
+            const m = document.getElementById('user-dropdown-menu');
+            if (wrap && m && !wrap.contains(e.target)) {
+                m.classList.add('hidden');
+            }
+        });
+
+        function openChangePasswordModal() {
+            const m = document.getElementById('modal-change-password');
+            if (m) {
+                m.classList.remove('hidden');
+                m.classList.add('flex');
+                document.getElementById('cp_current_pwd').value = '';
+                document.getElementById('cp_new_pwd').value = '';
+                document.getElementById('cp_confirm_pwd').value = '';
+            }
+            const dm = document.getElementById('user-dropdown-menu');
+            if (dm) dm.classList.add('hidden');
+        }
+
+        function closeChangePasswordModal() {
+            const m = document.getElementById('modal-change-password');
+            if (m) {
+                m.classList.add('hidden');
+                m.classList.remove('flex');
+            }
+        }
+
+        async function submitChangePassword(e) {
+            e.preventDefault();
+            const curr = document.getElementById('cp_current_pwd').value;
+            const n1 = document.getElementById('cp_new_pwd').value;
+            const n2 = document.getElementById('cp_confirm_pwd').value;
+            if (n1 !== n2) {
+                showToast('Mật khẩu mới và xác nhận mật khẩu không khớp!', 'warning');
+                return;
+            }
+            const btn = document.getElementById('btn-submit-cp');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Đang đổi...';
+            try {
+                const res = await fetch('/me/change-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ current_password: curr, new_password: n1 })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast('Đổi mật khẩu thành công!', 'success');
+                    closeChangePasswordModal();
+                } else {
+                    showToast(data.detail || 'Lỗi khi đổi mật khẩu', 'error');
+                }
+            } catch (err) {
+                showToast('Lỗi kết nối máy chủ', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-check"></i> Lưu mật khẩu mới';
+            }
+        }
+
         setInterval(() => {
             const now = new Date();
-            document.getElementById('live-clock').innerText = now.toLocaleTimeString('vi-VN');
+            const el = document.getElementById('live-clock');
+            if (el) el.innerText = now.toLocaleTimeString('vi-VN');
         }, 1000);
     </script>
+
     {% block scripts %}{% endblock %}
 </body>
 </html>
-
