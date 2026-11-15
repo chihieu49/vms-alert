@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 # PowerShell script đẩy mã nguồn vms_alert lên GitHub chuẩn xác 100%
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $Host.UI.RawUI.WindowTitle = "HỖ TRỢ ĐẨY MÃ NGUỒN VMS ALERT LÊN GITHUB (RENDER DEPLOY)"
@@ -129,3 +129,4 @@ if ($LASTEXITCODE -eq 0) {
 }
 
 Read-Host "Nhan Enter de dong cua so nay..."
+
