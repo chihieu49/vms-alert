@@ -125,37 +125,31 @@ def is_in_vietnam_waters(lat: float, lng: float) -> bool:
 
 def generate_realistic_marine_coords(index: int, total: int = 146) -> Tuple[float, float]:
     """
-    Sinh tọa độ thực tế trên các ngư trường đánh bắt xa bờ truyền thống của tàu cá Khánh Hòa / Ninh Hòa / Vạn Ninh:
-    - Vịnh Vân Phong & Đầm Môn: 12.60°N - 12.80°N, 109.32°E - 109.50°E
-    - Bãi cạn Hòn Khói ngoài khơi: 12.50°N - 12.65°N, 109.35°E - 109.60°E
-    - Vùng biển Vịnh Nha Phu - Đảo Khỉ ngoài khơi: 12.35°N - 12.48°N, 109.32°E - 109.55°E
-    - Ngư trường xa bờ (Thềm lục địa Khánh Hòa, bãi ngầm Phúc Tần, Hoàng Sa - Trường Sa): 11.5°N - 13.5°N, 109.60°E - 112.50°E
-    Tuyệt đối NẰM NGOÀI BIỂN, không bị cắm vào đất liền Ninh Hòa!
+    Sinh tọa độ phân bố cụm tự nhiên theo góc cực (Fibonacci spiral polar distribution)
+    quanh các vịnh, bến cá, cảng neo đậu thực tế của Ninh Hòa & Khánh Hòa:
+    - Vịnh Vân Phong (Ninh Thủy - Ninh Diêm - Bến bãi TX Ninh Hòa)
+    - Cảng cá Vạn Giã & Đầm Môn (Huyện Vạn Ninh)
+    - Đầm Nha Phu & Vịnh Hòn Khói
+    - Vịnh Nha Trang & Đảo Hòn Tre ngoài khơi
+    - Ngư trường Biển Đông / Quần đảo Trường Sa
+    Tuyệt đối NẰM NGOÀI BIỂN/VŨNG VỊNH, tự nhiên như bến đỗ thực tế, không xếp thành hàng kẻ chỉ!
     """
-    # Phân nhóm ngư trường thực tế
-    zone = index % 5
-    offset = (index * 7) % 100 / 100.0  # Tạo độ phân tán tự nhiên
+    clusters = [
+        {"lat": 12.62, "lng": 109.32, "spread": 0.05},  # Vịnh Vân Phong (TX Ninh Hòa)
+        {"lat": 12.76, "lng": 109.34, "spread": 0.06},  # Cảng cá Vạn Giã & Đầm Môn
+        {"lat": 12.46, "lng": 109.28, "spread": 0.05},  # Đầm Nha Phu & Hòn Khói
+        {"lat": 12.24, "lng": 109.32, "spread": 0.07},  # Vịnh Nha Trang ngoài khơi
+        {"lat": 12.35, "lng": 109.85, "spread": 0.25}   # Ngư trường Biển Đông xa bờ
+    ]
 
-    if zone == 0:
-        # Ngư trường Vịnh Vân Phong - Mũi Đôi - Hòn Cổ (TX Ninh Hòa & H. Vạn Ninh)
-        lat = 12.62 + (offset * 0.16)
-        lng = 109.35 + (offset * 0.18)
-    elif zone == 1:
-        # Ngư trường Đảo Hòn Lớn - Hòn Tai - Vịnh Nha Trang ngoài khơi
-        lat = 12.38 + (offset * 0.15)
-        lng = 109.36 + (offset * 0.22)
-    elif zone == 2:
-        # Ngư trường Xã Đại Lãnh - Vũng Rô ngoài khơi
-        lat = 12.82 + (offset * 0.18)
-        lng = 109.42 + (offset * 0.25)
-    elif zone == 3:
-        # Vùng biển đánh bắt cá ngừ đại dương xa bờ (Cách bờ 30 - 80 hải lý)
-        lat = 12.20 + (offset * 0.90)
-        lng = 109.75 + (offset * 0.95)
-    else:
-        # Vùng biển thềm lục địa Khánh Hòa - Quần đảo Trường Sa
-        lat = 11.80 + (offset * 1.10)
-        lng = 110.20 + (offset * 1.40)
+    c = clusters[index % len(clusters)]
+
+    # Phân tán tự nhiên góc vàng 137.5 độ (Golden Angle)
+    angle = (index * 137.5) * (math.pi / 180.0)
+    r = math.sqrt((index % 25) + 1) * (c["spread"] / 5.0)
+
+    lat = c["lat"] + (r * math.sin(angle))
+    lng = c["lng"] + (r * 1.35 * math.cos(angle))
 
     return round(lat, 5), round(lng, 5)
 

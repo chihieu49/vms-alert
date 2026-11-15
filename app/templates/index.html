@@ -1,6 +1,38 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+    /* Styling Gom cụm Marker Cluster giống hệt bản đồ Cục Thủy Sản & Kiểm Ngư */
+    .vms-cluster-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .vms-cluster-badge {
+        border-radius: 50%;
+        text-align: center;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-weight: 800;
+        font-size: 13px;
+        color: #ffffff;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
+        border: 2.5px solid #ffffff;
+        transition: transform 0.2s ease;
+    }
+    .vms-cluster-badge:hover {
+        transform: scale(1.1);
+    }
+    /* Cụm bình thường: màu xanh lá đậm như bản đồ Tổng cục */
+    .vms-cluster-normal {
+        background: radial-gradient(circle, #10b981 0%, #047857 100%);
+    }
+    /* Cụm có tàu mất kết nối: màu đỏ cảnh báo */
+    .vms-cluster-lost {
+        background: radial-gradient(circle, #ef4444 0%, #b91c1c 100%);
+        animation: pulse 1.8s infinite;
+    }
+</style>
+
 <!-- KPI Stats Cards -->
 {% include "partials/stats_cards.html" %}
 
@@ -731,6 +763,7 @@
     }
 
     let vesselMarkersMap = {};
+    let markerClusterGroup = null;
 
     function initLeafletMap() {
         if (map) {
@@ -743,41 +776,112 @@
 
         // Tọa độ trung tâm vùng biển Khánh Hòa / Vịnh Vân Phong
         map = L.map('leaflet-vessel-map', {
-            center: [12.55, 109.50],
+            center: [12.55, 109.40],
             zoom: 9,
             zoomControl: true
         });
 
-        // 1. Lớp bản đồ tiêu chuẩn OpenStreetMap
-        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 18,
-            attribution: '© OpenStreetMap contributors'
+        // =========================================================================
+        // 1. CÁC LỚP BẢN ĐỒ GOOGLE EARTH & GOOGLE MAPS
+        // =========================================================================
+
+        // Google Earth Vệ Tinh Lai (Ảnh vệ tinh sắc nét + địa danh, đảo, vịnh biển) - MẶC ĐỊNH
+        const googleHybrid = L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+            subdomains: ['0', '1', '2', '3'],
+            maxZoom: 20,
+            attribution: '© Google Earth / Google Maps'
         }).addTo(map);
 
-        // 2. Lớp bản đồ vệ tinh Esri Satellite
-        const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            maxZoom: 18,
-            attribution: 'Esri World Imagery'
+        // Google Earth Vệ Tinh Thuần (Ảnh vệ tinh không nhãn chữ)
+        const googleSatellite = L.tileLayer('https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+            subdomains: ['0', '1', '2', '3'],
+            maxZoom: 20,
+            attribution: '© Google Earth'
         });
 
-        // 3. Lớp Hải đồ Quốc tế OpenSeaMap (Phao tiêu, hải đăng, độ sâu biển)
+        // Google Địa Hình Hàng Hải (Terrain)
+        const googleTerrain = L.tileLayer('https://mt{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', {
+            subdomains: ['0', '1', '2', '3'],
+            maxZoom: 20,
+            attribution: '© Google Terrain'
+        });
+
+        // Google Bản Đồ Giao Thông (Roads)
+        const googleRoads = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+            subdomains: ['0', '1', '2', '3'],
+            maxZoom: 20,
+            attribution: '© Google Maps'
+        });
+
+        // OpenStreetMap Tiêu Chuẩn
+        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18,
+            attribution: '© OpenStreetMap'
+        });
+
+        // Hải đồ Hàng hải Quốc tế OpenSeaMap (Phao tiêu, hải đăng, phao luồng)
         const seaMapLayer = L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {
             maxZoom: 18,
             attribution: '© OpenSeaMap'
+        });
+
+        // =========================================================================
+        // 2. VẼ ĐƯỜNG RANH GIỚI VÙNG BIỂN VIỆT NAM (EEZ & RANH GIỚI KIỂM NGƯ)
+        // =========================================================================
+        const vietnamEEZ = [
+            [21.50, 108.05], [20.80, 108.25], [19.80, 107.80], [17.50, 109.80],
+            [15.00, 111.20], [13.20, 112.80], [11.00, 113.80], [8.50, 113.20],
+            [6.80, 110.50], [6.50, 106.00], [7.60, 103.80], [9.50, 103.20]
+        ];
+        const eezLine = L.polyline(vietnamEEZ, {
+            color: '#38bdf8',
+            weight: 2.5,
+            dashArray: '8, 6',
+            opacity: 0.9
         }).addTo(map);
+        eezLine.bindTooltip("<b>Ranh Giới Vùng Biển Việt Nam (EEZ)</b>", { sticky: true });
 
         // Bộ chuyển đổi lớp bản đồ (Base & Overlay layers)
         const baseMaps = {
-            "Bản đồ chuẩn (OSM)": osmLayer,
-            "Ảnh Vệ Tinh (Satellite)": satelliteLayer
+            "🌍 Google Earth Vệ Tinh (Khuyên dùng)": googleHybrid,
+            "🛰️ Google Earth Thuần (Satellite)": googleSatellite,
+            "🏔️ Google Địa Hình (Terrain)": googleTerrain,
+            "🗺️ Google Bản Đồ Số (Roads)": googleRoads,
+            "🌐 OpenStreetMap": osmLayer
         };
         const overlayMaps = {
-            "Hải đồ hàng hải (OpenSeaMap)": seaMapLayer
+            "🚢 Ranh Giới Vùng Biển (EEZ)": eezLine,
+            "⚓ Hải Đồ Phao Luồng (OpenSeaMap)": seaMapLayer
         };
         L.control.layers(baseMaps, overlayMaps, { position: 'topright' }).addTo(map);
 
         // Thước tỉ lệ hải lý / km
         L.control.scale({ metric: true, imperial: true, position: 'bottomright' }).addTo(map);
+
+        // =========================================================================
+        // 3. KHỞI TẠO MARKER CLUSTER (GOM CỤM TÀU NHƯ CỤC THỦY SẢN & KIỂM NGƯ)
+        // =========================================================================
+        markerClusterGroup = L.markerClusterGroup({
+            maxClusterRadius: 40,
+            spiderfyOnMaxZoom: true,
+            showCoverageOnHover: false,
+            zoomToBoundsOnClick: true,
+            iconCreateFunction: function(cluster) {
+                const count = cluster.getChildCount();
+                const markers = cluster.getAllChildMarkers();
+                const hasLost = markers.some(m => m.options && m.options.isLost);
+
+                let cClass = hasLost ? 'vms-cluster-lost' : 'vms-cluster-normal';
+                let size = count > 50 ? 44 : (count > 10 ? 36 : 30);
+
+                return L.divIcon({
+                    html: `<div class="vms-cluster-badge ${cClass}" style="width:${size}px; height:${size}px; line-height:${size}px;">${count}</div>`,
+                    className: 'vms-cluster-container',
+                    iconSize: [size, size]
+                });
+            }
+        });
+        map.addLayer(markerClusterGroup);
 
         // Bắt sự kiện di chuột hiển thị tọa độ thời gian thực
         map.on('mousemove', function(e) {
@@ -785,7 +889,7 @@
             const lng = e.latlng.lng.toFixed(4);
             const latDMS = toDMS(e.latlng.lat, 'N', 'S');
             const lngDMS = toDMS(e.latlng.lng, 'E', 'W');
-            document.getElementById('mouse-coordinates').innerText = `Tọa độ: ${lat}°N, ${lng}°E (${latDMS}, ${lngDMS})`;
+            document.getElementById('mouse-coordinates').innerText = `Tọa độ con trỏ: ${lat}°N, ${lng}°E (${latDMS}, ${lngDMS})`;
         });
 
         updateMapMarkers(globalVessels);
@@ -802,19 +906,32 @@
     }
 
     function getRealisticMarineCoords(index, total) {
-        // Tọa độ bảo đảm nằm ngoài biển khơi Khánh Hòa (từ 109.35°E trở ra)
-        const zone = index % 5;
-        const offset = ((index * 13) % 100) / 100.0;
-        if (zone === 0) return [12.65 + (offset * 0.12), 109.36 + (offset * 0.15)]; // Vịnh Vân Phong
-        if (zone === 1) return [12.42 + (offset * 0.14), 109.38 + (offset * 0.20)]; // Vịnh Nha Trang ngoài khơi
-        if (zone === 2) return [12.82 + (offset * 0.16), 109.43 + (offset * 0.22)]; // Ngư trường Đại Lãnh
-        if (zone === 3) return [12.25 + (offset * 0.85), 109.70 + (offset * 0.90)]; // Xa bờ cá ngừ
-        return [11.85 + (offset * 1.05), 110.15 + (offset * 1.30)];                 // Thềm lục địa Trường Sa
+        // Phân tán cụm tự nhiên theo góc cực (Fibonacci spiral polar angle) quanh các vịnh/cảng biển Ninh Hòa & Khánh Hòa
+        // Tuyệt đối không xếp thành hàng kẻ chỉ thẳng tắp!
+        const clusters = [
+            { name: "Vịnh Vân Phong (Ninh Thủy - Ninh Diêm)", lat: 12.62, lng: 109.32, spread: 0.05 },
+            { name: "Cảng cá Vạn Giã & Đầm Môn", lat: 12.76, lng: 109.34, spread: 0.06 },
+            { name: "Đầm Nha Phu & Vịnh Hòn Khói", lat: 12.46, lng: 109.28, spread: 0.05 },
+            { name: "Vịnh Nha Trang ngoài khơi Hòn Tre", lat: 12.24, lng: 109.32, spread: 0.07 },
+            { name: "Ngư trường đánh bắt xa bờ (Biển Đông)", lat: 12.35, lng: 109.85, spread: 0.25 }
+        ];
+
+        const clusterIdx = index % clusters.length;
+        const c = clusters[clusterIdx];
+
+        // Góc xoay tự nhiên góc vàng 137.5 độ
+        const angle = (index * 137.5) * (Math.PI / 180.0);
+        const r = Math.sqrt((index % 25) + 1) * (c.spread / 5.0);
+
+        const lat = c.lat + (r * Math.sin(angle));
+        const lng = c.lng + (r * 1.35 * Math.cos(angle));
+
+        return [parseFloat(lat.toFixed(5)), parseFloat(lng.toFixed(5))];
     }
 
     function updateMapMarkers(vessels) {
-        if (!map) return;
-        mapMarkers.forEach(m => map.removeLayer(m));
+        if (!map || !markerClusterGroup) return;
+        markerClusterGroup.clearLayers();
         mapMarkers = [];
         vesselMarkersMap = {};
 
@@ -828,7 +945,7 @@
             let lng = state.last_longitude;
             let isRealGPS = (state.last_signal_time !== null && state.last_signal_time !== undefined && state.last_signal_time !== '');
 
-            // Nếu tàu chưa có tọa độ từ API GSTC, gán tọa độ ngoài biển mô phỏng hợp lý
+            // Nếu tàu chưa có tọa độ từ API GSTC, gán tọa độ theo cụm tự nhiên
             if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
                 const coords = getRealisticMarineCoords(idx, total);
                 lat = coords[0];
@@ -844,26 +961,25 @@
             validCount++;
             if (isRealGPS) realGpsCount++;
 
+            let isLost = (state.current_status === 'LOST_SIGNAL');
             let color = '#10b981'; // Xanh lá: Bình thường
             let statusText = 'Hoạt động bình thường';
-            let pulseClass = '';
 
-            if (state.current_status === 'LOST_SIGNAL') {
+            if (isLost) {
                 color = '#ef4444'; // Đỏ: Mất kết nối
                 statusText = 'Mất kết nối (> 2 giờ)';
-                pulseClass = 'animate-ping';
             } else if (state.current_status === 'RECOVERED') {
                 color = '#0284c7'; // Xanh dương: Đã khắc phục
                 statusText = 'Đã khôi phục kết nối';
             }
 
-            // Icon tàu cá chuyên dụng
+            // Icon thuyền cá có mũi nhọn chuẩn hàng hải
             const vesselIcon = L.divIcon({
                 className: 'custom-vessel-marker',
                 html: `
                     <div style="position: relative; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;">
                         <span style="position: absolute; width: 26px; height: 26px; border-radius: 50%; background-color: ${color}; opacity: 0.35;"></span>
-                        <div style="width: 22px; height: 22px; border-radius: 50%; background-color: ${color}; border: 2px solid #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; color: white; font-size: 11px;">
+                        <div style="width: 22px; height: 22px; border-radius: 50%; background-color: ${color}; border: 2px solid #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; color: white; font-size: 11px;">
                             <i class="fa-solid fa-ship"></i>
                         </div>
                     </div>
@@ -872,7 +988,10 @@
                 iconAnchor: [15, 15]
             });
 
-            const marker = L.marker([lat, lng], { icon: vesselIcon }).addTo(map);
+            const marker = L.marker([lat, lng], { 
+                icon: vesselIcon,
+                isLost: isLost
+            });
 
             const lastSignalTime = state.last_signal_time ? state.last_signal_time.replace('T', ' ').substring(0, 19) : (isRealGPS ? 'Đã nhận tín hiệu' : 'Chưa có tín hiệu thực tế');
             const latDMS = toDMS(lat, 'N', 'S');
@@ -902,6 +1021,7 @@
                 </div>
             `);
 
+            markerClusterGroup.addLayer(marker);
             mapMarkers.push(marker);
             vesselMarkersMap[v.plate_number] = marker;
         });
@@ -909,8 +1029,8 @@
         const countInfoEl = document.getElementById('map-vessels-count-info');
         if (countInfoEl) {
             countInfoEl.innerHTML = `
-                <span>Đang hiển thị vị trí <strong>${validCount}/${total} tàu cá</strong>.</span>
-                <span class="text-marine-700 font-semibold">(Đã đồng bộ GPS thực tế: <strong>${realGpsCount} tàu</strong>)</span>
+                <span>Bản đồ Google Earth: hiển thị <strong>${validCount}/${total} tàu cá</strong>.</span>
+                <span class="text-emerald-400 font-semibold">(Đã đồng bộ GPS thật: <strong>${realGpsCount} tàu</strong>)</span>
             `;
         }
 
@@ -919,7 +1039,7 @@
             if (realGpsCount > 0) {
                 realBadgeEl.innerHTML = `<span class="text-emerald-700 font-semibold bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md"><i class="fa-solid fa-satellite mr-1"></i>Đã đồng bộ GPS thật từ Tổng cục: ${realGpsCount}/${total} tàu</span>`;
             } else {
-                realBadgeEl.innerHTML = `<span class="text-amber-700 font-semibold bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-md"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Chưa đồng bộ tọa độ GSTC (Đang dùng tọa độ dự phòng)</span>`;
+                realBadgeEl.innerHTML = `<span class="text-amber-700 font-semibold bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-md"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Chưa đồng bộ tọa độ GSTC (Đang dùng cụm dự phòng)</span>`;
             }
         }
 
@@ -938,9 +1058,15 @@
         setTimeout(() => {
             const marker = vesselMarkersMap[plate];
             if (marker && map) {
-                const latlng = marker.getLatLng();
-                map.flyTo(latlng, 12, { animate: true, duration: 1.2 });
-                setTimeout(() => marker.openPopup(), 1300);
+                if (markerClusterGroup && markerClusterGroup.hasLayer(marker)) {
+                    markerClusterGroup.zoomToShowLayer(marker, () => {
+                        marker.openPopup();
+                    });
+                } else {
+                    const latlng = marker.getLatLng();
+                    map.flyTo(latlng, 13, { animate: true, duration: 1.2 });
+                    setTimeout(() => marker.openPopup(), 1300);
+                }
             }
         }, 250);
     }
