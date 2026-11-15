@@ -1,0 +1,35 @@
+# ==============================================================================
+# RENDER BLUEPRINT SPECIFICATION (render.yaml)
+# Hướng dẫn Render.com tự động build & deploy dịch vụ VMS Alert
+# ==============================================================================
+services:
+  - type: web
+    name: vms-alert-ninhhoa
+    runtime: python
+    region: singapore # Chọn Singapore để tốc độ truy xuất API Tổng Cục Thủy Sản nhanh nhất
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.9.13
+      - key: ADMIN_EMAIL
+        value: adminnhvn@gmail.com
+      - key: POLL_INTERVAL_MINUTES
+        value: "120"
+      - key: LOST_SIGNAL_THRESHOLD_MINUTES
+        value: "120"
+      - key: MIN_VESSEL_LENGTH_METERS
+        value: "15.0"
+      - key: KEEP_ALIVE_ENABLED
+        value: "true"
+      # Các biến bảo mật dưới đây có thể nhập trực tiếp trên Render Dashboard:
+      # - key: SMTP_USER
+      #   sync: false
+      # - key: SMTP_PASSWORD
+      #   sync: false
+      # - key: GSTC_COOKIE
+      #   sync: false
+

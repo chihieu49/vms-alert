@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}VMS Alert System - Trạm Thủy Sản Ninh Hòa{% endblock %}</title>
+
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        navy: { 800: '#0f172a', 900: '#020617' },
+                        marine: { 500: '#0ea5e9', 600: '#0284c7', 700: '#0369a1' }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Leaflet Map CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col font-sans">
+
+    <!-- Top Gov Bar -->
+    <div class="bg-navy-900 text-slate-300 text-xs py-1.5 px-6 border-b border-slate-800 flex justify-between items-center">
+        <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-anchor text-amber-400"></i>
+            <span class="font-bold tracking-wide text-white">TRẠM THỦY SẢN NINH HÒA</span>
+            <span class="text-slate-500">|</span>
+            <span class="text-slate-400">CHI CỤC THỦY SẢN TỈNH KHÁNH HÒA</span>
+        </div>
+        <div class="flex items-center space-x-4">
+            <button onclick="openGSTCSyncModal()" class="flex items-center space-x-1.5 hover:text-white transition cursor-pointer bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700" title="Bấm để kiểm tra và đồng bộ tọa độ với Tổng cục Thủy sản">
+                <span id="top-gstc-dot" class="w-2 h-2 rounded-full bg-amber-400"></span>
+                <span id="top-gstc-text">GSTC: Kiểm tra kết nối...</span>
+            </button>
+            <span id="live-clock" class="font-mono text-slate-400">--:--:--</span>
+        </div>
+    </div>
+
+    <!-- Main Navigation Header -->
+    <header class="bg-navy-800 text-white shadow-lg border-b border-slate-700">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-marine-600 text-white p-2.5 rounded-xl shadow-md">
+                    <i class="fa-solid fa-ship text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                        HỆ THỐNG GIÁM SÁT TÀU CÁ CHUYÊN DỤNG (VMS ALERT)
+                    </h1>
+                    <p class="text-xs text-slate-400">
+                        Đối chiếu dữ liệu thời gian thực chu kỳ 2 giờ • Tự động cảnh báo Email tới <strong class="text-amber-400">adminnhvn@gmail.com</strong>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Action Toolbar -->
+            <div class="flex items-center space-x-3">
+                <div class="text-right hidden sm:block mr-2">
+                    <div class="text-[11px] text-slate-400">Lần quét tiếp theo:</div>
+                    <div id="countdown-badge" class="font-mono text-amber-400 font-bold text-sm bg-slate-800/80 px-2.5 py-0.5 rounded border border-amber-400/30">
+                        Đang tính...
+                    </div>
+                </div>
+
+                <button onclick="openGSTCSyncModal()" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-sm px-3.5 py-2 rounded-lg shadow-md transition flex items-center gap-1.5 border border-blue-400/40" title="Đồng bộ tọa độ GPS thực tế với Tổng cục Thủy sản">
+                    <i class="fa-solid fa-satellite-dish text-amber-300"></i>
+                    <span>Đồng Bộ GSTC</span>
+                    <span id="nav-gstc-badge" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                </button>
+
+                <button onclick="triggerManualScan()" class="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold text-sm px-4 py-2 rounded-lg shadow transition flex items-center gap-2">
+                    <i class="fa-solid fa-rotate" id="scan-icon"></i> Quét Ngay
+                </button>
+
+                <button onclick="openImportModal()" class="bg-slate-700 hover:bg-slate-600 text-white text-sm px-3.5 py-2 rounded-lg border border-slate-600 shadow transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-import text-emerald-400"></i> Nhập File
+                </button>
+
+                <button onclick="openAddVesselModal()" class="bg-marine-600 hover:bg-marine-700 text-white text-sm px-3.5 py-2 rounded-lg shadow transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-plus"></i> Thêm Tàu
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-slate-500 text-xs py-4 border-t border-slate-800 text-center">
+        Trạm Thủy Sản Ninh Hòa • Hệ thống Giám sát Hành trình Tàu cá ≥ 15 mét • Email thông báo: adminnhvn@gmail.com
+    </footer>
+
+    <!-- Clock Script -->
+    <script>
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('live-clock').innerText = now.toLocaleTimeString('vi-VN');
+        }, 1000);
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
+

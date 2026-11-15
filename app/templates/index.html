@@ -1,0 +1,1141 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- KPI Stats Cards -->
+{% include "partials/stats_cards.html" %}
+
+<!-- Alert Notification Banner (Hiện khi có tàu mất tín hiệu) -->
+<div id="lost-alert-banner" class="hidden mb-4 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-xl shadow-sm flex items-center justify-between">
+    <div class="flex items-center space-x-3">
+        <div class="text-red-500 text-2xl">
+            <i class="fa-solid fa-bell fa-shake"></i>
+        </div>
+        <div>
+            <div class="text-sm font-bold text-red-800">CẢNH BÁO TÀU CÁ MẤT TÍN HIỆU VMS QUÁ 2 GIỜ</div>
+            <div class="text-xs text-red-600 mt-0.5" id="banner-message">
+                Đã gửi thông báo tổng hợp tới email: <strong>adminnhvn@gmail.com</strong>
+            </div>
+        </div>
+    </div>
+    <button onclick="switchTab('emails')" class="text-xs font-semibold bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg shadow-sm transition">
+        Xem Email Đã Gửi
+    </button>
+</div>
+
+<!-- GSTC Synchronization Status Banner -->
+<div id="gstc-sync-banner" class="mb-5 bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white p-3.5 rounded-xl shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border border-blue-500/30">
+    <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-lg bg-blue-600/50 flex items-center justify-center text-xl text-yellow-300 border border-blue-400/40">
+            <i class="fa-solid fa-satellite-dish"></i>
+        </div>
+        <div>
+            <div class="flex items-center gap-2">
+                <span class="text-sm font-bold tracking-wide">ĐỒNG BỘ BẢN ĐỒ TỔNG CỤC THỦY SẢN (GSTC)</span>
+                <span id="banner-gstc-badge" class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-400 text-slate-900">
+                    Chờ đồng bộ tọa độ
+                </span>
+            </div>
+            <div class="text-xs text-slate-300 mt-0.5" id="banner-gstc-desc">
+                Đồng bộ tọa độ GPS thực tế thời gian thực của tàu cá từ liên kết GSTC hoặc file xuất bản đồ Tổng cục.
+            </div>
+        </div>
+    </div>
+    <div class="flex items-center space-x-2">
+        <button onclick="openGSTCSyncModal('file')" class="text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 px-3 py-2 rounded-lg shadow transition flex items-center gap-1.5">
+            <i class="fa-solid fa-file-arrow-up"></i> Tải File Xuất GSTC
+        </button>
+        <button onclick="openGSTCSyncModal('api')" class="text-xs font-medium bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-lg border border-blue-400/50 shadow transition flex items-center gap-1.5">
+            <i class="fa-solid fa-key"></i> Đăng Nhập / Cookie
+        </button>
+    </div>
+</div>
+
+<!-- Tab Navigation Header -->
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+    <div class="flex space-x-1 bg-slate-200/80 p-1 rounded-xl">
+        <button id="tab-btn-vessels" onclick="switchTab('vessels')" class="px-4 py-2 rounded-lg text-sm font-semibold transition bg-white text-navy-900 shadow-sm">
+            <i class="fa-solid fa-list-check mr-1.5 text-marine-600"></i> Danh Sách Tàu
+        </button>
+        <button id="tab-btn-map" onclick="switchTab('map')" class="px-4 py-2 rounded-lg text-sm font-semibold transition text-slate-600 hover:text-navy-900">
+            <i class="fa-solid fa-map-location-dot mr-1.5 text-marine-600"></i> Bản Đồ VMS
+        </button>
+        <button id="tab-btn-alerts" onclick="switchTab('alerts')" class="px-4 py-2 rounded-lg text-sm font-semibold transition text-slate-600 hover:text-navy-900">
+            <i class="fa-solid fa-clock-rotate-left mr-1.5 text-marine-600"></i> Nhật Ký Sự Cố
+        </button>
+        <button id="tab-btn-emails" onclick="switchTab('emails')" class="px-4 py-2 rounded-lg text-sm font-semibold transition text-slate-600 hover:text-navy-900">
+            <i class="fa-solid fa-envelope mr-1.5 text-marine-600"></i> Hộp Thư Email
+        </button>
+    </div>
+
+    <div class="flex items-center space-x-2">
+        <a href="/api/vessels/sample-template" class="text-xs font-medium text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-2 rounded-lg transition flex items-center gap-1.5">
+            <i class="fa-solid fa-file-excel"></i> File Mẫu Excel
+        </a>
+        <button onclick="simulateRecoveryTest()" class="text-xs font-medium text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-300 px-3 py-2 rounded-lg shadow-sm transition flex items-center gap-1.5">
+            <i class="fa-solid fa-vial text-amber-500"></i> Giả Lập Khắc Phục
+        </button>
+    </div>
+</div>
+
+<!-- Tab Content Area -->
+<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+
+    <!-- View 1: Danh sách tàu -->
+    <div id="view-vessels" class="tab-view p-4">
+        <!-- Search & Filters -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div class="relative w-full sm:w-80">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-sm"></i>
+                <input type="text" id="vessel-search" onkeyup="filterVessels()" placeholder="Tìm biển số, chủ tàu, SĐT..." class="w-full pl-9 pr-4 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-marine-500">
+            </div>
+            <div class="flex items-center space-x-2">
+                <select id="vessel-status-filter" onchange="filterVessels()" class="text-sm border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-marine-500">
+                    <option value="ALL">-- Tất cả trạng thái --</option>
+                    <option value="LOST_SIGNAL">⚠️ Mất kết nối (> 2h)</option>
+                    <option value="NORMAL">✅ Hoạt động bình thường</option>
+                    <option value="RECOVERED">🔄 Vừa khắc phục</option>
+                </select>
+            </div>
+        </div>
+        {% include "partials/vessel_table.html" %}
+    </div>
+
+    <!-- View 2: Bản đồ Hải đồ Leaflet -->
+    <div id="view-map" class="tab-view p-4 hidden">
+        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 mb-3 pb-3 border-b border-slate-200">
+            <div>
+                <div class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-compass text-marine-600 text-base"></i> Hải Đồ Số Giám Sát Tàu Cá VMS - Vùng Biển Khánh Hòa & Ngư Trường Xa Bờ
+                </div>
+                <div class="text-xs text-slate-500 mt-0.5 flex items-center gap-2" id="map-vessels-count-info">
+                    <span>Đang tải thông tin hải đồ...</span>
+                </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 text-xs">
+                <button onclick="openGSTCSyncModal('file')" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-3 py-1.5 rounded-lg transition shadow-sm flex items-center gap-1.5" title="Tải file Excel/CSV xuất từ Tổng cục để cập nhật 100% tọa độ thực tế">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> Nạp File Tọa Độ GSTC
+                </button>
+                <button onclick="openGSTCSyncModal('api')" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-3 py-1.5 rounded-lg transition shadow-sm flex items-center gap-1.5" title="Cấu hình kết nối trực tiếp với máy chủ Tổng cục">
+                    <i class="fa-solid fa-link"></i> Kết Nối GSTC
+                </button>
+                <button onclick="autoFitAllVessels()" class="bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg transition shadow-sm flex items-center gap-1" title="Tự động thu phóng vừa vặn toàn bộ vị trí tàu">
+                    <i class="fa-solid fa-expand"></i> Bao Quát Tất Cả
+                </button>
+                <button onclick="loadDashboardData()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-2.5 py-1.5 rounded-lg transition flex items-center gap-1" title="Làm mới vị trí">
+                    <i class="fa-solid fa-rotate"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2 text-xs font-semibold">
+            <div class="flex items-center gap-3">
+                <span class="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-md border border-emerald-200">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Bình thường (< 2h)
+                </span>
+                <span class="flex items-center gap-1.5 bg-red-50 text-red-700 px-2.5 py-1 rounded-md border border-red-200">
+                    <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span> Mất kết nối (> 2h)
+                </span>
+                <span class="flex items-center gap-1.5 bg-sky-50 text-sky-700 px-2.5 py-1 rounded-md border border-sky-200">
+                    <span class="w-2.5 h-2.5 rounded-full bg-sky-500"></span> Đã khắc phục
+                </span>
+            </div>
+            <div id="map-real-coords-badge" class="text-[11px] font-normal text-slate-500">
+                <!-- Sẽ được JS điền số tàu có GPS thật -->
+            </div>
+        </div>
+
+        <div class="relative">
+            <div id="leaflet-vessel-map" class="w-full h-[540px] rounded-xl border border-slate-300 shadow-inner z-0"></div>
+            <!-- Tọa độ chuột thời gian thực -->
+            <div id="mouse-coordinates" class="absolute bottom-2 left-2 bg-slate-900/80 backdrop-blur-sm text-slate-200 text-[11px] font-mono px-2.5 py-1 rounded shadow z-10 pointer-events-none">
+                Tọa độ con trỏ: --°N, --°E
+            </div>
+        </div>
+    </div>
+
+    <!-- View 3: Nhật ký sự cố & Khắc phục -->
+    <div id="view-alerts" class="tab-view p-4 hidden">
+        <div class="flex justify-between items-center mb-3">
+            <div class="text-sm font-semibold text-slate-700">
+                Lịch Sử Cảnh Báo Email Tới adminnhvn@gmail.com & Nhật Ký Khắc Phục Tự Động
+            </div>
+            <button onclick="loadAlertHistory()" class="text-xs text-slate-600 hover:text-slate-900 border border-slate-300 px-2.5 py-1.5 rounded-lg transition">
+                <i class="fa-solid fa-arrows-rotate mr-1"></i> Làm mới
+            </button>
+        </div>
+        {% include "partials/alert_feed.html" %}
+    </div>
+
+    <!-- View 4: Hộp thư đã gửi -->
+    <div id="view-emails" class="tab-view p-4 hidden">
+        <div class="flex justify-between items-center mb-3">
+            <div class="text-sm font-semibold text-slate-700">
+                Bản Sao Các Email Đã Gửi Tới <strong class="text-red-600">adminnhvn@gmail.com</strong>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button onclick="sendTestEmailNow()" class="text-xs bg-red-600 hover:bg-red-700 text-white font-medium px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+                    <i class="fa-solid fa-paper-plane"></i> Gửi Thử Email
+                </button>
+                <button onclick="loadSentEmails()" class="text-xs text-slate-600 border border-slate-300 px-2.5 py-1.5 rounded-lg transition">
+                    <i class="fa-solid fa-arrows-rotate mr-1"></i> Làm mới
+                </button>
+            </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="sent-emails-grid">
+            <div class="col-span-2 text-center py-8 text-slate-400">Đang tải hộp thư...</div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Modal Thêm Tàu -->
+<div id="modal-add-vessel" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+    <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 m-4 border border-slate-200">
+        <div class="flex justify-between items-center pb-3 border-b border-slate-200">
+            <h3 class="text-base font-bold text-slate-900"><i class="fa-solid fa-ship text-marine-600 mr-2"></i>Thêm Tàu Cá Giám Sát</h3>
+            <button onclick="closeAddVesselModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+        <form id="form-add-vessel" class="mt-4 space-y-3">
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Số Đăng Ký <span class="text-red-500">*</span></label>
+                    <input type="text" name="plate_number" required placeholder="KH-91234-TS" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 uppercase focus:ring-2 focus:ring-marine-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Tên Tàu</label>
+                    <input type="text" name="ship_name" placeholder="Tàu Ninh Thủy..." class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-marine-500 focus:outline-none">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Tên Chủ Tàu <span class="text-red-500">*</span></label>
+                    <input type="text" name="owner_name" required placeholder="Nguyễn Văn A" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-marine-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Số Điện Thoại <span class="text-red-500">*</span></label>
+                    <input type="text" name="owner_phone" required placeholder="0912345678" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-marine-500 focus:outline-none">
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Địa Chỉ Của Tàu <span class="text-red-500">*</span></label>
+                <input type="text" name="owner_address" required placeholder="Phường Ninh Thủy, TX. Ninh Hòa, Khánh Hòa" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-marine-500 focus:outline-none">
+            </div>
+            <div class="grid grid-cols-3 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Chiều Dài Lmax (m) <span class="text-red-500">*</span></label>
+                    <input type="number" step="0.1" name="chieudaitoanbo" value="16.5" min="15.0" required class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-marine-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Công Suất (CV)</label>
+                    <input type="number" name="congsuat" value="400" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-marine-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Mã Thiết Bị VMS</label>
+                    <input type="text" name="device_id" placeholder="VMS-01" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-marine-500 focus:outline-none">
+                </div>
+            </div>
+            <div class="flex justify-end space-x-2 pt-3 border-t border-slate-200 mt-4">
+                <button type="button" onclick="closeAddVesselModal()" class="px-4 py-2 text-sm text-slate-600 hover:text-slate-800">Hủy</button>
+                <button type="button" onclick="submitAddVessel()" class="px-4 py-2 bg-marine-600 hover:bg-marine-700 text-white font-medium text-sm rounded-lg shadow">Lưu Tàu Cá</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Import File -->
+<div id="modal-import" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 m-4 border border-slate-200">
+        <div class="flex justify-between items-center pb-3 border-b border-slate-200">
+            <h3 class="text-base font-bold text-slate-900"><i class="fa-solid fa-file-import text-emerald-600 mr-2"></i>Nhập Danh Sách Tàu (Excel / CSV / JSON)</h3>
+            <button onclick="closeImportModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+        <div class="mt-4 space-y-4">
+            <p class="text-xs text-slate-500 leading-relaxed">
+                Tải lên file danh sách tàu cá do trạm quản lý. Hệ thống tự động lọc giữ lại các tàu có <strong>chiều dài từ 15 mét trở lên</strong> theo quy định IUU.
+            </p>
+            <input type="file" id="import-file-input" accept=".xlsx, .xls, .csv, .json" class="w-full text-sm border border-slate-300 rounded-lg p-2 file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-marine-50 file:text-marine-700 hover:file:bg-marine-100">
+            <div class="flex justify-between items-center pt-3 border-t border-slate-200">
+                <a href="/api/vessels/sample-template" class="text-xs text-marine-600 hover:underline"><i class="fa-solid fa-download mr-1"></i> Tải file mẫu</a>
+                <div class="flex space-x-2">
+                    <button type="button" onclick="closeImportModal()" class="px-3 py-1.5 text-xs text-slate-600">Đóng</button>
+                    <button type="button" onclick="submitImportFile()" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs rounded-lg shadow">Tiến Hành Nhập</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Xem Email HTML -->
+<div id="modal-view-email" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+    <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full h-[85vh] flex flex-col m-4 border border-slate-200 overflow-hidden">
+        <div class="flex justify-between items-center p-4 bg-slate-900 text-white">
+            <h3 class="text-sm font-bold flex items-center gap-2"><i class="fa-solid fa-envelope text-amber-400"></i> <span id="modal-email-title">Nội dung email</span></h3>
+            <button onclick="closeEmailModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+        <div class="flex-1 p-0 bg-slate-100">
+            <iframe id="modal-email-iframe" class="w-full h-full border-0"></iframe>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Đồng Bộ Tọa Độ Bản Đồ Tổng Cục Thủy Sản (GSTC) -->
+<div id="modal-gstc-sync" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-xl w-full m-4 border border-slate-200 overflow-hidden flex flex-col">
+        <!-- Modal Header -->
+        <div class="bg-gradient-to-r from-navy-900 via-blue-950 to-navy-900 text-white p-4 flex justify-between items-center border-b border-blue-900">
+            <div class="flex items-center space-x-2.5">
+                <div class="w-8 h-8 rounded-lg bg-blue-600/50 flex items-center justify-center text-amber-300">
+                    <i class="fa-solid fa-satellite-dish"></i>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold tracking-wide">ĐỒNG BỘ CHÍNH XÁC VỚI BẢN ĐỒ TỔNG CỤC THỦY SẢN</h3>
+                    <p class="text-[11px] text-slate-300">Cổng GSTC: https://gstc.tongcucthuysan.gov.vn</p>
+                </div>
+            </div>
+            <button onclick="closeGSTCSyncModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+
+        <!-- Modal Subtabs -->
+        <div class="flex border-b border-slate-200 bg-slate-50 px-4 pt-3 gap-2">
+            <button id="gstc-tab-btn-file" onclick="switchGSTCTab('file')" class="px-4 py-2 text-xs font-bold rounded-t-lg bg-white border-t border-l border-r border-slate-200 text-blue-700 shadow-sm flex items-center gap-1.5">
+                <i class="fa-solid fa-file-arrow-up text-amber-500"></i> Cách 1: Nạp File Xuất Từ GSTC (Khuyên dùng)
+            </button>
+            <button id="gstc-tab-btn-api" onclick="switchGSTCTab('api')" class="px-4 py-2 text-xs font-bold rounded-t-lg text-slate-600 hover:text-slate-900 flex items-center gap-1.5">
+                <i class="fa-solid fa-key text-blue-600"></i> Cách 2: Kết Nối Trực Tiếp API (2H)
+            </button>
+        </div>
+
+        <!-- Modal Body Content -->
+        <div class="p-5 flex-1 overflow-y-auto">
+
+            <!-- Subtab 1: Nạp File xuất từ Cổng GSTC -->
+            <div id="gstc-view-file" class="space-y-4">
+                <div class="bg-blue-50 border border-blue-200 rounded-xl p-3.5 text-xs text-blue-900">
+                    <div class="font-bold flex items-center gap-1.5 text-blue-800 mb-1">
+                        <i class="fa-solid fa-circle-info text-blue-600"></i> Hướng dẫn đồng bộ tọa độ GPS chuẩn 100%:
+                    </div>
+                    <ol class="list-decimal list-inside space-y-1 text-slate-700">
+                        <li>Đăng nhập Cổng GSTC: <a href="https://gstc.tongcucthuysan.gov.vn/Map" target="_blank" class="text-blue-600 underline font-semibold">gstc.tongcucthuysan.gov.vn/Map</a>.</li>
+                        <li>Trên giao diện bản đồ, bấm <strong>"Xuất danh sách tàu"</strong> (hoặc Xuất Excel) để tải file dữ liệu về máy.</li>
+                        <li>Chọn file vừa tải về (.xlsx, .xls hoặc .csv) và nhấn nút đồng bộ bên dưới.</li>
+                    </ol>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">Chọn file xuất từ bản đồ Tổng cục Thủy sản:</label>
+                    <input type="file" id="gstc-file-input" accept=".xlsx, .xls, .csv, .json" class="w-full text-xs border border-slate-300 rounded-lg p-2.5 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-2 border-t border-slate-200">
+                    <button type="button" onclick="closeGSTCSyncModal()" class="px-3.5 py-2 text-xs text-slate-600 hover:text-slate-800">Đóng</button>
+                    <button type="button" onclick="submitGSTCFile()" class="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold text-xs rounded-lg shadow-sm flex items-center gap-1.5">
+                        <i class="fa-solid fa-arrows-rotate"></i> Đồng Bộ Tọa Độ Thực Tế Ngay
+                    </button>
+                </div>
+            </div>
+
+            <!-- Subtab 2: Kết nối API GSTC / Cookie -->
+            <div id="gstc-view-api" class="space-y-4 hidden">
+                <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900">
+                    <i class="fa-solid fa-triangle-exclamation text-amber-600 mr-1"></i>
+                    API Tổng cục yêu cầu phiên đăng nhập. Bạn có thể <strong>Đăng nhập tài khoản GSTC</strong> hoặc <strong>dán Cookie</strong> để hệ thống tự động tải vị trí GPS mỗi 2 giờ.
+                </div>
+
+                <!-- Form Login GSTC -->
+                <div class="border border-slate-200 rounded-xl p-3.5 bg-slate-50">
+                    <div class="text-xs font-bold text-slate-800 mb-2 flex items-center gap-1.5">
+                        <i class="fa-solid fa-user-lock text-blue-600"></i> Lựa chọn A: Đăng nhập tài khoản GSTC trực tiếp
+                    </div>
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 mb-0.5">Tên đăng nhập GSTC</label>
+                            <input type="text" id="gstc-username" placeholder="Tài khoản trạm..." class="w-full text-xs border border-slate-300 rounded-md px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 mb-0.5">Mật khẩu GSTC</label>
+                            <input type="password" id="gstc-password" placeholder="••••••••" class="w-full text-xs border border-slate-300 rounded-md px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500">
+                        </div>
+                    </div>
+                    <div class="mt-2 text-right">
+                        <button type="button" onclick="submitGSTCLogin()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs rounded-md shadow-sm">
+                            Đăng Nhập & Kết Nối GSTC
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Form Cookie GSTC -->
+                <div class="border border-slate-200 rounded-xl p-3.5 bg-slate-50">
+                    <div class="text-xs font-bold text-slate-800 mb-1 flex items-center gap-1.5">
+                        <i class="fa-solid fa-cookie-bite text-amber-600"></i> Lựa chọn B: Dán Session Cookie từ trình duyệt
+                    </div>
+                    <p class="text-[11px] text-slate-500 mb-2">Nếu không muốn nhập mật khẩu, sao chép chuỗi Cookie sau khi đăng nhập trên trình duyệt:</p>
+                    <textarea id="gstc-cookie-input" rows="2" placeholder="Ví dụ: .ASPXAUTH=...; ASP.NET_SessionId=..." class="w-full text-xs font-mono border border-slate-300 rounded-md p-2 focus:ring-1 focus:ring-blue-500"></textarea>
+                    <div class="mt-2 flex justify-between items-center">
+                        <button type="button" onclick="testGSTCConnection()" class="text-xs text-blue-600 hover:underline">
+                            <i class="fa-solid fa-vial mr-1"></i> Kiểm tra kết nối hiện có
+                        </button>
+                        <button type="button" onclick="submitGSTCCookie()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-medium text-xs rounded-md shadow-sm">
+                            Lưu Cookie & Đồng Bộ
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let globalVessels = [];
+    let map = null;
+    let mapMarkers = [];
+    let nextScanTimeEpoch = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadDashboardData();
+        checkGSTCStatus();
+        setInterval(loadDashboardData, 5000);
+        setInterval(checkGSTCStatus, 10000);
+        setInterval(updateCountdown, 1000);
+    });
+
+    async function checkGSTCStatus() {
+        try {
+            const res = await fetch('/api/vessels/gstc/status');
+            const data = await res.json();
+
+            const topDot = document.getElementById('top-gstc-dot');
+            const topText = document.getElementById('top-gstc-text');
+            const navBadge = document.getElementById('nav-gstc-badge');
+            const bannerBadge = document.getElementById('banner-gstc-badge');
+            const bannerDesc = document.getElementById('banner-gstc-desc');
+
+            if (data.is_authenticated || data.last_sync_count > 0) {
+                if (topDot) topDot.className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
+                if (topText) topText.innerText = `GSTC: Đã đồng bộ (${data.last_sync_count} tàu)`;
+                if (navBadge) navBadge.className = "w-2 h-2 rounded-full bg-emerald-400";
+                if (bannerBadge) {
+                    bannerBadge.className = "text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-400 text-slate-950";
+                    bannerBadge.innerText = `Đã đồng bộ GPS thực tế (${data.last_sync_count} tàu)`;
+                }
+                if (bannerDesc) {
+                    const timeStr = data.last_sync_time ? ` lúc ${data.last_sync_time}` : '';
+                    bannerDesc.innerText = `Dữ liệu tọa độ GPS thực tế từ Tổng cục Thủy sản${timeStr}. Bản đồ hiển thị chính xác 100%.`;
+                }
+            } else {
+                if (topDot) topDot.className = "w-2 h-2 rounded-full bg-amber-400";
+                if (topText) topText.innerText = `GSTC: Chờ đồng bộ tọa độ`;
+                if (navBadge) navBadge.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
+                if (bannerBadge) {
+                    bannerBadge.className = "text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-400 text-slate-900";
+                    bannerBadge.innerText = `Chờ đồng bộ tọa độ GSTC`;
+                }
+                if (bannerDesc) {
+                    bannerDesc.innerText = `Bấm 'Tải File Xuất GSTC' hoặc 'Đăng Nhập' để bản đồ hiển thị chính xác 100% tọa độ thực tế của tàu từ Tổng cục.`;
+                }
+            }
+        } catch (e) {
+            console.error("Lỗi kiểm tra trạng thái GSTC:", e);
+        }
+    }
+
+    function openGSTCSyncModal(defaultTab = 'file') {
+        switchGSTCTab(defaultTab);
+        document.getElementById('modal-gstc-sync').classList.remove('hidden');
+    }
+
+    function closeGSTCSyncModal() {
+        document.getElementById('modal-gstc-sync').classList.add('hidden');
+    }
+
+    function switchGSTCTab(tab) {
+        const btnFile = document.getElementById('gstc-tab-btn-file');
+        const btnApi = document.getElementById('gstc-tab-btn-api');
+        const viewFile = document.getElementById('gstc-view-file');
+        const viewApi = document.getElementById('gstc-view-api');
+
+        if (tab === 'file') {
+            btnFile.className = "px-4 py-2 text-xs font-bold rounded-t-lg bg-white border-t border-l border-r border-slate-200 text-blue-700 shadow-sm flex items-center gap-1.5";
+            btnApi.className = "px-4 py-2 text-xs font-bold rounded-t-lg text-slate-600 hover:text-slate-900 flex items-center gap-1.5";
+            viewFile.classList.remove('hidden');
+            viewApi.classList.add('hidden');
+        } else {
+            btnApi.className = "px-4 py-2 text-xs font-bold rounded-t-lg bg-white border-t border-l border-r border-slate-200 text-blue-700 shadow-sm flex items-center gap-1.5";
+            btnFile.className = "px-4 py-2 text-xs font-bold rounded-t-lg text-slate-600 hover:text-slate-900 flex items-center gap-1.5";
+            viewApi.classList.remove('hidden');
+            viewFile.classList.add('hidden');
+        }
+    }
+
+    async function submitGSTCFile() {
+        const fileInput = document.getElementById('gstc-file-input');
+        if (!fileInput.files || fileInput.files.length === 0) {
+            alert("Vui lòng chọn file xuất từ trang Map của Tổng cục Thủy sản trước!");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        const btn = event.target;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Đang đồng bộ...`;
+        btn.disabled = true;
+
+        try {
+            const res = await fetch('/api/vessels/gstc/sync-file', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await res.json();
+            if (res.ok) {
+                alert("🎉 " + result.message);
+                closeGSTCSyncModal();
+                fileInput.value = '';
+                await loadDashboardData();
+                await checkGSTCStatus();
+                switchTab('map');
+            } else {
+                alert("Lỗi đồng bộ: " + (result.detail || "Không đọc được file"));
+            }
+        } catch (e) {
+            alert("Lỗi tải lên: " + e);
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    }
+
+    async function submitGSTCLogin() {
+        const u = document.getElementById('gstc-username').value.trim();
+        const p = document.getElementById('gstc-password').value.trim();
+        if (!u || !p) {
+            alert("Vui lòng nhập đầy đủ Tài khoản và Mật khẩu GSTC!");
+            return;
+        }
+
+        const btn = event.target;
+        btn.innerText = "Đang kết nối...";
+        btn.disabled = true;
+
+        try {
+            const res = await fetch('/api/vessels/gstc/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: u, password: p })
+            });
+            const result = await res.json();
+            if (res.ok) {
+                alert("🎉 " + result.message);
+                closeGSTCSyncModal();
+                await loadDashboardData();
+                await checkGSTCStatus();
+                switchTab('map');
+            } else {
+                alert("Lỗi đăng nhập: " + (result.detail || "Thất bại"));
+            }
+        } catch (e) {
+            alert("Lỗi kết nối: " + e);
+        } finally {
+            btn.innerText = "Đăng Nhập & Kết Nối GSTC";
+            btn.disabled = false;
+        }
+    }
+
+    async function submitGSTCCookie() {
+        const c = document.getElementById('gstc-cookie-input').value.trim();
+        if (!c) {
+            alert("Vui lòng dán chuỗi Cookie từ trình duyệt!");
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/vessels/gstc/cookie', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cookie: c })
+            });
+            const result = await res.json();
+            alert(result.message);
+            if (result.success) {
+                closeGSTCSyncModal();
+                await loadDashboardData();
+                await checkGSTCStatus();
+                switchTab('map');
+            }
+        } catch (e) {
+            alert("Lỗi lưu cookie: " + e);
+        }
+    }
+
+    async function testGSTCConnection() {
+        try {
+            const res = await fetch('/api/vessels/gstc/test', { method: 'POST' });
+            const result = await res.json();
+            if (result.success) {
+                alert(`✅ Kết nối thành công! Nhận được ${result.vessels_count} tàu trực tiếp từ Tổng cục.`);
+            } else {
+                alert(`⚠️ ${result.message}`);
+            }
+        } catch (e) {
+            alert("Lỗi kết nối: " + e);
+        }
+    }
+
+    async function loadDashboardData() {
+        try {
+            // 1. Thống kê KPI
+            const summaryRes = await fetch('/api/dashboard/summary');
+            const summary = await summaryRes.json();
+            document.getElementById('stat-total').innerText = summary.total || 0;
+            document.getElementById('stat-normal').innerText = summary.normal || 0;
+            document.getElementById('stat-lost').innerText = summary.lost || 0;
+            document.getElementById('stat-recovered').innerText = summary.recovered || 0;
+
+            if (summary.scheduler && summary.scheduler.next_scan_time) {
+                nextScanTimeEpoch = new Date(summary.scheduler.next_scan_time).getTime();
+            }
+
+            // Banner cảnh báo
+            const banner = document.getElementById('lost-alert-banner');
+            if (summary.lost > 0) {
+                banner.classList.remove('hidden');
+                document.getElementById('banner-message').innerHTML = 
+                    `Phát hiện <strong>${summary.lost} tàu</strong> mất kết nối VMS > 2 giờ. Báo cáo chi tiết đã gửi tới: <strong>adminnhvn@gmail.com</strong>`;
+            } else {
+                banner.classList.add('hidden');
+            }
+
+            // 2. Danh sách tàu
+            const vesselsRes = await fetch('/api/vessels');
+            globalVessels = await vesselsRes.json();
+            renderVesselsTable(globalVessels);
+            if (map) updateMapMarkers(globalVessels);
+
+        } catch (e) {
+            console.error("Lỗi nạp dashboard:", e);
+        }
+    }
+
+    function updateCountdown() {
+        if (!nextScanTimeEpoch) return;
+        const diff = nextScanTimeEpoch - new Date().getTime();
+        const badge = document.getElementById('countdown-badge');
+        if (diff <= 0) {
+            badge.innerText = "Đang quét...";
+        } else {
+            const h = Math.floor(diff / 3600000);
+            const m = Math.floor((diff % 3600000) / 60000);
+            const s = Math.floor((diff % 60000) / 1000);
+            badge.innerText = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        }
+    }
+
+    function renderVesselsTable(list) {
+        const tbody = document.getElementById('vessels-tbody');
+        if (!list || list.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="10" class="py-8 text-center text-slate-400">Không có tàu cá nào phù hợp</td></tr>`;
+            return;
+        }
+
+        let html = '';
+        list.forEach((v, idx) => {
+            const state = v.state || {};
+            let badge = '';
+            if (state.current_status === 'NORMAL') {
+                badge = `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-800"><i class="fa-solid fa-circle-check mr-1 text-[10px]"></i> Bình thường</span>`;
+            } else if (state.current_status === 'LOST_SIGNAL') {
+                badge = `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-800 animate-pulse"><i class="fa-solid fa-triangle-exclamation mr-1 text-[10px]"></i> Mất tín hiệu >2h</span>`;
+            } else if (state.current_status === 'RECOVERED') {
+                badge = `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-sky-100 text-sky-800"><i class="fa-solid fa-shield-halved mr-1 text-[10px]"></i> Vừa khắc phục</span>`;
+            }
+
+            const cycles = (state.consecutive_lost_cycles > 0) ?
+                `<span class="bg-red-600 text-white text-xs px-2 py-0.5 rounded-full font-bold">${state.consecutive_lost_cycles}</span>` :
+                `<span class="text-slate-400">0</span>`;
+
+            const lastTime = state.last_signal_time ? state.last_signal_time.replace('T', ' ').substring(0, 19) : 'Chưa có';
+
+            html += `
+            <tr class="hover:bg-slate-50 transition">
+                <td class="py-3 px-4 text-center font-bold text-slate-400">${idx + 1}</td>
+                <td class="py-3 px-4 font-bold text-marine-700">${v.plate_number}</td>
+                <td class="py-3 px-4 font-semibold text-slate-800">${v.owner_name}</td>
+                <td class="py-3 px-4"><a href="tel:${v.owner_phone || ''}" class="text-marine-600 hover:underline font-medium">${v.owner_phone || '--'}</a></td>
+                <td class="py-3 px-4 text-xs text-slate-500 max-w-xs truncate" title="${v.owner_address || ''}">${v.owner_address || '--'}</td>
+                <td class="py-3 px-4 text-center font-semibold text-slate-700">${v.chieudaitoanbo} m</td>
+                <td class="py-3 px-4 text-xs text-slate-500">${lastTime}</td>
+                <td class="py-3 px-4 text-center">${badge}</td>
+                <td class="py-3 px-4 text-center font-medium">${cycles}</td>
+                <td class="py-3 px-4 text-center whitespace-nowrap">
+                    <button onclick="focusVesselOnMap('${v.plate_number}')" class="text-marine-600 hover:text-marine-800 text-xs p-1 mr-1" title="Định vị tàu trên Hải đồ">
+                        <i class="fa-solid fa-crosshairs"></i>
+                    </button>
+                    <button onclick="deleteVesselAction('${v.plate_number}')" class="text-slate-400 hover:text-red-600 text-xs p-1" title="Xóa tàu">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </td>
+            </tr>
+            `;
+        });
+        tbody.innerHTML = html;
+    }
+
+    function filterVessels() {
+        const q = document.getElementById('vessel-search').value.toLowerCase().trim();
+        const statusFilter = document.getElementById('vessel-status-filter').value;
+
+        const filtered = globalVessels.filter(v => {
+            const matchQ = (
+                (v.plate_number && v.plate_number.toLowerCase().includes(q)) ||
+                (v.owner_name && v.owner_name.toLowerCase().includes(q)) ||
+                (v.owner_phone && v.owner_phone.includes(q)) ||
+                (v.owner_address && v.owner_address.toLowerCase().includes(q))
+            );
+            const curStatus = v.state ? v.state.current_status : 'NORMAL';
+            const matchS = (statusFilter === 'ALL') || (curStatus === statusFilter);
+            return matchQ && matchS;
+        });
+
+        renderVesselsTable(filtered);
+    }
+
+    function switchTab(tab) {
+        document.querySelectorAll('.tab-view').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('[id^="tab-btn-"]').forEach(btn => {
+            btn.classList.remove('bg-white', 'text-navy-900', 'shadow-sm');
+            btn.classList.add('text-slate-600');
+        });
+
+        const activeBtn = document.getElementById(`tab-btn-${tab}`);
+        if (activeBtn) {
+            activeBtn.classList.remove('text-slate-600');
+            activeBtn.classList.add('bg-white', 'text-navy-900', 'shadow-sm');
+        }
+
+        if (tab === 'vessels') {
+            document.getElementById('view-vessels').classList.remove('hidden');
+        } else if (tab === 'map') {
+            document.getElementById('view-map').classList.remove('hidden');
+            initLeafletMap();
+        } else if (tab === 'alerts') {
+            document.getElementById('view-alerts').classList.remove('hidden');
+            loadAlertHistory();
+        } else if (tab === 'emails') {
+            document.getElementById('view-emails').classList.remove('hidden');
+            loadSentEmails();
+        }
+    }
+
+    let vesselMarkersMap = {};
+
+    function initLeafletMap() {
+        if (map) {
+            setTimeout(() => {
+                map.invalidateSize();
+                autoFitAllVessels();
+            }, 200);
+            return;
+        }
+
+        // Tọa độ trung tâm vùng biển Khánh Hòa / Vịnh Vân Phong
+        map = L.map('leaflet-vessel-map', {
+            center: [12.55, 109.50],
+            zoom: 9,
+            zoomControl: true
+        });
+
+        // 1. Lớp bản đồ tiêu chuẩn OpenStreetMap
+        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // 2. Lớp bản đồ vệ tinh Esri Satellite
+        const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 18,
+            attribution: 'Esri World Imagery'
+        });
+
+        // 3. Lớp Hải đồ Quốc tế OpenSeaMap (Phao tiêu, hải đăng, độ sâu biển)
+        const seaMapLayer = L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {
+            maxZoom: 18,
+            attribution: '© OpenSeaMap'
+        }).addTo(map);
+
+        // Bộ chuyển đổi lớp bản đồ (Base & Overlay layers)
+        const baseMaps = {
+            "Bản đồ chuẩn (OSM)": osmLayer,
+            "Ảnh Vệ Tinh (Satellite)": satelliteLayer
+        };
+        const overlayMaps = {
+            "Hải đồ hàng hải (OpenSeaMap)": seaMapLayer
+        };
+        L.control.layers(baseMaps, overlayMaps, { position: 'topright' }).addTo(map);
+
+        // Thước tỉ lệ hải lý / km
+        L.control.scale({ metric: true, imperial: true, position: 'bottomright' }).addTo(map);
+
+        // Bắt sự kiện di chuột hiển thị tọa độ thời gian thực
+        map.on('mousemove', function(e) {
+            const lat = e.latlng.lat.toFixed(4);
+            const lng = e.latlng.lng.toFixed(4);
+            const latDMS = toDMS(e.latlng.lat, 'N', 'S');
+            const lngDMS = toDMS(e.latlng.lng, 'E', 'W');
+            document.getElementById('mouse-coordinates').innerText = `Tọa độ: ${lat}°N, ${lng}°E (${latDMS}, ${lngDMS})`;
+        });
+
+        updateMapMarkers(globalVessels);
+    }
+
+    function toDMS(degVal, posDir, negDir) {
+        const d = Math.abs(degVal);
+        const deg = Math.floor(d);
+        const minFloat = (d - deg) * 60;
+        const min = Math.floor(minFloat);
+        const sec = ((minFloat - min) * 60).toFixed(1);
+        const dir = degVal >= 0 ? posDir : negDir;
+        return `${deg}°${min}'${sec}"${dir}`;
+    }
+
+    function getRealisticMarineCoords(index, total) {
+        // Tọa độ bảo đảm nằm ngoài biển khơi Khánh Hòa (từ 109.35°E trở ra)
+        const zone = index % 5;
+        const offset = ((index * 13) % 100) / 100.0;
+        if (zone === 0) return [12.65 + (offset * 0.12), 109.36 + (offset * 0.15)]; // Vịnh Vân Phong
+        if (zone === 1) return [12.42 + (offset * 0.14), 109.38 + (offset * 0.20)]; // Vịnh Nha Trang ngoài khơi
+        if (zone === 2) return [12.82 + (offset * 0.16), 109.43 + (offset * 0.22)]; // Ngư trường Đại Lãnh
+        if (zone === 3) return [12.25 + (offset * 0.85), 109.70 + (offset * 0.90)]; // Xa bờ cá ngừ
+        return [11.85 + (offset * 1.05), 110.15 + (offset * 1.30)];                 // Thềm lục địa Trường Sa
+    }
+
+    function updateMapMarkers(vessels) {
+        if (!map) return;
+        mapMarkers.forEach(m => map.removeLayer(m));
+        mapMarkers = [];
+        vesselMarkersMap = {};
+
+        let validCount = 0;
+        let realGpsCount = 0;
+        const total = vessels.length;
+
+        vessels.forEach((v, idx) => {
+            const state = v.state || {};
+            let lat = state.last_latitude;
+            let lng = state.last_longitude;
+            let isRealGPS = (state.last_signal_time !== null && state.last_signal_time !== undefined && state.last_signal_time !== '');
+
+            // Nếu tàu chưa có tọa độ từ API GSTC, gán tọa độ ngoài biển mô phỏng hợp lý
+            if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+                const coords = getRealisticMarineCoords(idx, total);
+                lat = coords[0];
+                lng = coords[1];
+                isRealGPS = false;
+            }
+
+            // Hoán đổi nếu bị đảo Lat/Lng
+            if (lat > 50 && lng < 35) {
+                const tmp = lat; lat = lng; lng = tmp;
+            }
+
+            validCount++;
+            if (isRealGPS) realGpsCount++;
+
+            let color = '#10b981'; // Xanh lá: Bình thường
+            let statusText = 'Hoạt động bình thường';
+            let pulseClass = '';
+
+            if (state.current_status === 'LOST_SIGNAL') {
+                color = '#ef4444'; // Đỏ: Mất kết nối
+                statusText = 'Mất kết nối (> 2 giờ)';
+                pulseClass = 'animate-ping';
+            } else if (state.current_status === 'RECOVERED') {
+                color = '#0284c7'; // Xanh dương: Đã khắc phục
+                statusText = 'Đã khôi phục kết nối';
+            }
+
+            // Icon tàu cá chuyên dụng
+            const vesselIcon = L.divIcon({
+                className: 'custom-vessel-marker',
+                html: `
+                    <div style="position: relative; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;">
+                        <span style="position: absolute; width: 26px; height: 26px; border-radius: 50%; background-color: ${color}; opacity: 0.35;"></span>
+                        <div style="width: 22px; height: 22px; border-radius: 50%; background-color: ${color}; border: 2px solid #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; color: white; font-size: 11px;">
+                            <i class="fa-solid fa-ship"></i>
+                        </div>
+                    </div>
+                `,
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+            });
+
+            const marker = L.marker([lat, lng], { icon: vesselIcon }).addTo(map);
+
+            const lastSignalTime = state.last_signal_time ? state.last_signal_time.replace('T', ' ').substring(0, 19) : (isRealGPS ? 'Đã nhận tín hiệu' : 'Chưa có tín hiệu thực tế');
+            const latDMS = toDMS(lat, 'N', 'S');
+            const lngDMS = toDMS(lng, 'E', 'W');
+
+            const sourceBadge = isRealGPS ? 
+                `<span style="background: #10b981; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 10px;">🟢 GPS Thực Tế GSTC</span>` : 
+                `<span style="background: #f59e0b; color: #1e293b; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 10px;">🟡 Tọa độ dự phòng</span>`;
+
+            marker.bindPopup(`
+                <div style="min-width: 260px; font-family: sans-serif; font-size: 12px; line-height: 1.5;">
+                    <div style="background: #0f172a; color: white; padding: 7px 10px; margin: -14px -14px 8px -14px; border-radius: 4px 4px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                        <strong style="font-size: 14px; color: #f59e0b;">${v.plate_number}</strong>
+                        <span style="font-size: 11px; padding: 1px 6px; border-radius: 10px; background: ${color}; color: white; font-weight: bold;">${v.chieudaitoanbo}m</span>
+                    </div>
+                    <div style="margin-bottom: 3px;"><strong>Chủ tàu:</strong> <span style="color: #1e293b; font-weight: 600;">${v.owner_name}</span></div>
+                    <div style="margin-bottom: 3px;"><strong>Điện thoại:</strong> <a href="tel:${v.owner_phone}" style="color: #0284c7; font-weight: bold; text-decoration: none;">${v.owner_phone || 'Chưa có'}</a></div>
+                    <div style="margin-bottom: 3px;"><strong>Địa chỉ:</strong> <span style="color: #64748b;">${v.owner_address || 'Chưa cập nhật'}</span></div>
+                    <div style="margin-bottom: 3px;"><strong>Trạng thái:</strong> <span style="color: ${color}; font-weight: bold;">${statusText}</span></div>
+                    <div style="margin-bottom: 3px;"><strong>Tín hiệu cuối:</strong> <span style="color: #475569; font-weight: 500;">${lastSignalTime}</span></div>
+                    <div style="margin-bottom: 5px;"><strong>Nguồn vị trí:</strong> ${sourceBadge}</div>
+                    <hr style="margin: 6px 0; border: none; border-top: 1px dashed #cbd5e1;">
+                    <div style="background: #f8fafc; padding: 6px; border-radius: 4px; font-family: monospace; font-size: 11px; color: #0f172a; border: 1px solid #e2e8f0;">
+                        📍 WGS84: <strong>${lat.toFixed(5)}°N, ${lng.toFixed(5)}°E</strong><br>
+                        🧭 Hải đồ: <strong>${latDMS} - ${lngDMS}</strong>
+                    </div>
+                </div>
+            `);
+
+            mapMarkers.push(marker);
+            vesselMarkersMap[v.plate_number] = marker;
+        });
+
+        const countInfoEl = document.getElementById('map-vessels-count-info');
+        if (countInfoEl) {
+            countInfoEl.innerHTML = `
+                <span>Đang hiển thị vị trí <strong>${validCount}/${total} tàu cá</strong>.</span>
+                <span class="text-marine-700 font-semibold">(Đã đồng bộ GPS thực tế: <strong>${realGpsCount} tàu</strong>)</span>
+            `;
+        }
+
+        const realBadgeEl = document.getElementById('map-real-coords-badge');
+        if (realBadgeEl) {
+            if (realGpsCount > 0) {
+                realBadgeEl.innerHTML = `<span class="text-emerald-700 font-semibold bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md"><i class="fa-solid fa-satellite mr-1"></i>Đã đồng bộ GPS thật từ Tổng cục: ${realGpsCount}/${total} tàu</span>`;
+            } else {
+                realBadgeEl.innerHTML = `<span class="text-amber-700 font-semibold bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-md"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Chưa đồng bộ tọa độ GSTC (Đang dùng tọa độ dự phòng)</span>`;
+            }
+        }
+
+        // Tự động thu phóng vừa vặn toàn bộ các tàu
+        autoFitAllVessels();
+    }
+
+    function autoFitAllVessels() {
+        if (!map || mapMarkers.length === 0) return;
+        const group = L.featureGroup(mapMarkers);
+        map.fitBounds(group.getBounds().pad(0.15));
+    }
+
+    function focusVesselOnMap(plate) {
+        switchTab('map');
+        setTimeout(() => {
+            const marker = vesselMarkersMap[plate];
+            if (marker && map) {
+                const latlng = marker.getLatLng();
+                map.flyTo(latlng, 12, { animate: true, duration: 1.2 });
+                setTimeout(() => marker.openPopup(), 1300);
+            }
+        }, 250);
+    }
+
+    async function triggerManualScan() {
+        const icon = document.getElementById('scan-icon');
+        icon.classList.add('fa-spin');
+        try {
+            const res = await fetch('/api/dashboard/scan-now', { method: 'POST' });
+            const data = await res.json();
+            alert("Đã hoàn tất chu kỳ đối chiếu VMS.");
+            loadDashboardData();
+        } catch (e) {
+            alert("Lỗi quét: " + e);
+        } finally {
+            icon.classList.remove('fa-spin');
+        }
+    }
+
+    async function loadAlertHistory() {
+        const tbody = document.getElementById('alerts-tbody');
+        try {
+            const res = await fetch('/api/alerts/history');
+            const logs = await res.json();
+            if (!logs || logs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-slate-400">Chưa có nhật ký sự cố nào</td></tr>`;
+                return;
+            }
+
+            let html = '';
+            logs.forEach((log, idx) => {
+                let badge = (log.event_type === 'ALERT_SENT') ?
+                    `<span class="bg-red-100 text-red-800 text-xs px-2 py-0.5 rounded font-semibold">⚠️ Cảnh báo mất kết nối</span>` :
+                    `<span class="bg-sky-100 text-sky-800 text-xs px-2 py-0.5 rounded font-semibold">🔄 Đã khắc phục - Chấm dứt cảnh báo</span>`;
+
+                html += `
+                <tr class="hover:bg-slate-50 text-xs">
+                    <td class="py-3 px-4 text-center font-bold text-slate-400">${idx + 1}</td>
+                    <td class="py-3 px-4 text-slate-500 whitespace-nowrap">${log.sent_at.replace('T', ' ').substring(0,19)}</td>
+                    <td class="py-3 px-4">${badge}</td>
+                    <td class="py-3 px-4 font-bold text-marine-700">${log.plate_number}</td>
+                    <td class="py-3 px-4 font-medium text-slate-600">${log.channel}</td>
+                    <td class="py-3 px-4 font-bold text-red-600">${log.recipient}</td>
+                    <td class="py-3 px-4 text-slate-600 max-w-sm">${log.details || '--'}</td>
+                    <td class="py-3 px-4 text-center font-semibold text-slate-600">${log.delivery_status}</td>
+                </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        } catch (e) {
+            tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-red-500">Lỗi tải nhật ký: ${e}</td></tr>`;
+        }
+    }
+
+    async function loadSentEmails() {
+        const grid = document.getElementById('sent-emails-grid');
+        try {
+            const res = await fetch('/api/alerts/sent-emails');
+            const emails = await res.json();
+            if (!emails || emails.length === 0) {
+                grid.innerHTML = `<div class="col-span-2 text-center py-8 text-slate-400">Chưa có email cảnh báo nào được gửi.</div>`;
+                return;
+            }
+
+            let html = '';
+            emails.forEach(em => {
+                html += `
+                <div class="border border-red-200 rounded-xl p-4 bg-white shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="bg-red-600 text-white text-[11px] font-bold px-2 py-0.5 rounded-full">${em.vessel_count} Tàu mất tín hiệu</span>
+                            <span class="text-xs text-slate-400"><i class="fa-regular fa-clock mr-1"></i>${em.timestamp}</span>
+                        </div>
+                        <h4 class="text-sm font-bold text-slate-900 mb-1 truncate">${em.subject}</h4>
+                        <div class="text-xs text-slate-500 mb-3">Người nhận: <strong class="text-red-600">${em.to}</strong></div>
+                    </div>
+                    <button onclick="viewEmailDetail('${em.file_path}')" class="w-full text-xs font-semibold bg-slate-800 hover:bg-slate-900 text-white py-2 rounded-lg transition flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-eye"></i> Xem Thư Đầy Đủ
+                    </button>
+                </div>
+                `;
+            });
+            grid.innerHTML = html;
+        } catch (e) {
+            grid.innerHTML = `<div class="col-span-2 text-center py-8 text-red-500">Lỗi tải hộp thư: ${e}</div>`;
+        }
+    }
+
+    function viewEmailDetail(filename) {
+        document.getElementById('modal-email-iframe').src = `/api/alerts/view-email/${encodeURIComponent(filename)}`;
+        document.getElementById('modal-email-title').innerText = `Bản sao: ${filename}`;
+        document.getElementById('modal-view-email').classList.remove('hidden');
+    }
+
+    function closeEmailModal() {
+        document.getElementById('modal-view-email').classList.add('hidden');
+    }
+
+    function openAddVesselModal() { document.getElementById('modal-add-vessel').classList.remove('hidden'); }
+    function closeAddVesselModal() { document.getElementById('modal-add-vessel').classList.add('hidden'); }
+
+    async function submitAddVessel() {
+        const form = document.getElementById('form-add-vessel');
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        data.chieudaitoanbo = parseFloat(data.chieudaitoanbo);
+        data.congsuat = parseFloat(data.congsuat || 0);
+
+        try {
+            const res = await fetch('/api/vessels', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+            if (res.ok) {
+                alert("Đã thêm tàu cá thành công!");
+                closeAddVesselModal();
+                form.reset();
+                loadDashboardData();
+            } else {
+                alert("Lỗi: " + (result.detail || "Không thể thêm"));
+            }
+        } catch (e) {
+            alert("Lỗi kết nối: " + e);
+        }
+    }
+
+    async function deleteVesselAction(plate) {
+        if (!confirm(`Bạn có chắc muốn xóa tàu ${plate} khỏi danh sách theo dõi?`)) return;
+        try {
+            const res = await fetch(`/api/vessels/${encodeURIComponent(plate)}`, { method: 'DELETE' });
+            if (res.ok) {
+                alert("Đã xóa tàu thành công!");
+                loadDashboardData();
+            } else {
+                alert("Lỗi xóa tàu");
+            }
+        } catch (e) {
+            alert("Lỗi: " + e);
+        }
+    }
+
+    function openImportModal() { document.getElementById('modal-import').classList.remove('hidden'); }
+    function closeImportModal() { document.getElementById('modal-import').classList.add('hidden'); }
+
+    async function submitImportFile() {
+        const fileInput = document.getElementById('import-file-input');
+        if (!fileInput.files || fileInput.files.length === 0) {
+            alert("Vui lòng chọn file trước!");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        try {
+            const res = await fetch('/api/vessels/import', { method: 'POST', body: formData });
+            const result = await res.json();
+            if (res.ok) {
+                alert(result.message);
+                closeImportModal();
+                fileInput.value = '';
+                loadDashboardData();
+            } else {
+                alert("Lỗi: " + (result.detail || "Nhập file thất bại"));
+            }
+        } catch (e) {
+            alert("Lỗi tải lên: " + e);
+        }
+    }
+
+    async function simulateRecoveryTest() {
+        if (!confirm("Kích hoạt kịch bản Test: Giả lập 1 tàu quay lại báo vị trí bình thường để kích hoạt cơ chế TỰ ĐỘNG CHẤM DỨT CẢNH BÁO?")) return;
+        try {
+            const res = await fetch('/api/alerts/simulate-recovery', { method: 'POST' });
+            const data = await res.json();
+            alert(data.message);
+            loadDashboardData();
+        } catch (e) {
+            alert("Lỗi: " + e);
+        }
+    }
+
+    async function sendTestEmailNow() {
+        if (!confirm("Gửi email thử nghiệm đầy đủ thông tin tới adminnhvn@gmail.com?")) return;
+        try {
+            const res = await fetch('/api/alerts/send-test', { method: 'POST' });
+            const data = await res.json();
+            alert(data.message);
+            loadSentEmails();
+        } catch (e) {
+            alert("Lỗi: " + e);
+        }
+    }
+</script>
+{% endblock %}
+

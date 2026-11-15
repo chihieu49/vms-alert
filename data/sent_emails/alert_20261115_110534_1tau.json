@@ -1,0 +1,18 @@
+{
+  "timestamp": "2026-11-15 11:05:34",
+  "to": "adminnhvn@gmail.com",
+  "subject": "[CẢNH BÁO GSTC] Phát hiện 1 tàu cá mất kết nối giám sát hành trình - Trạm Ninh Hòa (15/11/2026 11:05:34)",
+  "vessel_count": 1,
+  "file_path": "alert_20261115_110534_1tau.html",
+  "vessels": [
+    {
+      "plate_number": "KH-91288-TS",
+      "owner_name": "LÊ NGỌC THẢO",
+      "owner_phone": "0333696771",
+      "owner_address": "Phường Bắc Nha Trang (NHVN)",
+      "chieudaitoanbo": 21.65,
+      "consecutive_lost_cycles": 1,
+      "last_signal_time": "2026-11-15 11:05:34"
+    }
+  ]
+}

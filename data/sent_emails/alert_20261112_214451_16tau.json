@@ -1,0 +1,153 @@
+{
+  "timestamp": "2026-11-12 21:44:51",
+  "to": "adminnhvn@gmail.com",
+  "subject": "[CẢNH BÁO GSTC] Phát hiện 16 tàu cá mất kết nối giám sát hành trình - Trạm Ninh Hòa (12/11/2026 21:44:51)",
+  "vessel_count": 16,
+  "file_path": "alert_20261112_214451_16tau.html",
+  "vessels": [
+    {
+      "plate_number": "KH-90156-TS",
+      "owner_name": "TRƯƠNG THỊ LÀNH",
+      "owner_phone": "935928240",
+      "owner_address": "Phường Bắc Nha Trang (NHVN)",
+      "chieudaitoanbo": 22.6,
+      "consecutive_lost_cycles": 1,
+      "last_signal_time": "Mất kết nối > 2h"
+    },
+    {
+      "plate_number": "KH-94579-TS",
+      "owner_name": "LÊ THỊ KIM LOAN",
+      "owner_phone": "353061349",
+      "owner_address": "Xã Đại Lãnh",
+      "chieudaitoanbo": 19.7,
+      "consecutive_lost_cycles": 1,
+      "last_signal_time": "Mất kết nối > 2h"
+    },
+    {
+      "plate_number": "KH-98389-TS",
+      "owner_name": "Lê Thị Thu Hiền",
+      "owner_phone": "935717920",
+      "owner_address": "Phường Đông Ninh Hòa",
+      "chieudaitoanbo": 17.1,
+      "consecutive_lost_cycles": 1,
+      "last_signal_time": "Mất kết nối > 2h"
+    },
+    {
+      "plate_number": "KH-90746-TS",
+      "owner_name": "TRẦN THỊ NGỌC LAN",
+      "owner_phone": "973617973",
+      "owner_address": "Phường Đông Ninh Hòa",
+      "chieudaitoanbo": 15.2,
+      "consecutive_lost_cycles": 1,
+      "last_signal_time": "Mất kết nối > 2h"
+    },
+    {
+      "plate_number": "KH-94311-TS",
+      "owner_name": "Lê Văn Bình",
+      "owner_phone": "971379211",
+      "owner_address": "Xã Đại Lãnh",
+      "chieudaitoanbo": 16.0,
+      "consecutive_lost_cycles": 1,
+      "last_signal_time": "Mất kết nối > 2h"
+    },
+    {
+      "plate_number": "KH-91468-TS",
+      "owner_name": "Trần Ngọc Khiêm",
+      "owner_phone": "903547744",
+      "owner_address": "Phường Đông Ninh Hòa",
+      "chieudaitoanbo": 15.5,
+      "consecutive_lost_cycles": 1,
+      "last_signal_time": "Mất kết nối > 2h"
+    },
+    {
+      "plate_number": "KH-97326-TS",
+      "owner_name": "Phan Hạnh",
+      "owner_phone": "356747941",
+      "owner_address": "Phường Đông Ninh Hòa",
+      "chieudaitoanbo": 15.05,
+      "consecutive_lost_cycles": 1,
+      "last_signal_time": "Mất kết nối > 2h"
+    },
+    {
+      "plate_number": "KH-99232-TS",
+      "owner_name": "Võ Xuân Hoài",
+      "owner_phone": "382765670",
+      "owner_address": "Phường Đông Ninh Hòa",
+      "chieudaitoanbo": 17.2,
+      "consecutive_lost_cycles": 1,
+      "last_signal_time": "Mất kết nối > 2h"
+    },
+    {
+      "plate_number": "KH-99954-TS",
+      "owner_name": "Trương Quốc Bảo",
+      "owner_phone": "396247427",
+      "owner_address": "Phường Đông Ninh Hòa",
+      "chieudaitoanbo": 24.0,
+      "consecutive_lost_cycles": 1,
+      "last_signal_time": "Mất kết nối > 2h"
+    },
+    {
+      "plate_number": "KH-90587-TS",
+      "owner_name": "NGUYỄN VĂN HÙNG",
+      "owner_phone": "356035470",
+      "owner_address": "Phường Bắc Nha Trang (NHVN)",
+      "chieudaitoanbo": 22.11,
+      "consecutive_lost_cycles": 1,
+      "last_signal_time": "Mất kết nối > 2h"
+    },
+    {
+      "plate_number": "KH-97887-TS",
+      "owner_name": "Đỗ Văn Tri",
+      "owner_phone": "383702304",
+      "owner_address": "Phường Đông Ninh Hòa",
+      "chieudaitoanbo": 15.45,
+      "consecutive_lost_cycles": 1,
+      "last_signal_time": "Mất kết nối > 2h"
+    },
+    {
+      "plate_number": "KH-97650-TS",
+      "owner_name": "Trần Canh",
+      "owner_phone": "374534717",
+      "owner_address": "Phường Đông Ninh Hòa",
+      "chieudaitoanbo": 17.07,
+      "consecutive_lost_cycles": 1,
+      "last_signal_time": "Mất kết nối > 2h"
+    },
+    {
+      "plate_number": "KH-95375-TS",
+      "owner_name": "Trần Bá Đại",
+      "owner_phone": "382081766",
+      "owner_address": "Xã Đại Lãnh",
+      "chieudaitoanbo": 15.4,
+      "consecutive_lost_cycles": 1,
+      "last_signal_time": "Mất kết nối > 2h"
+    },
+    {
+      "plate_number": "KH-98154-TS",
+      "owner_name": "Trương Quốc Bảo",
+      "owner_phone": "396247427",
+      "owner_address": "Phường Đông Ninh Hòa",
+      "chieudaitoanbo": 18.5,
+      "consecutive_lost_cycles": 1,
+      "last_signal_time": "Mất kết nối > 2h"
+    },
+    {
+      "plate_number": "KH-91658-TS",
+      "owner_name": "Lê Minh Toàn",
+      "owner_phone": "364310177",
+      "owner_address": "Phường Đông Ninh Hòa",
+      "chieudaitoanbo": 16.2,
+      "consecutive_lost_cycles": 1,
+      "last_signal_time": "Mất kết nối > 2h"
+    },
+    {
+      "plate_number": "KH-91873-TS",
+      "owner_name": "Hồ Thiết",
+      "owner_phone": "979407592",
+      "owner_address": "Xã Đại Lãnh",
+      "chieudaitoanbo": 16.5,
+      "consecutive_lost_cycles": 1,
+      "last_signal_time": "Mất kết nối > 2h"
+    }
+  ]
+}

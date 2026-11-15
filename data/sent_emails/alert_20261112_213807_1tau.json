@@ -1,0 +1,25 @@
+{
+  "timestamp": "2026-11-12 21:38:07",
+  "to": "adminnhvn@gmail.com",
+  "subject": "[CẢNH BÁO GSTC] Phát hiện 1 tàu cá mất kết nối giám sát hành trình - Trạm Ninh Hòa (2026-11-12 21:38:06)",
+  "vessel_count": 1,
+  "file_path": "alert_20261112_213807_1tau.html",
+  "vessels": [
+    {
+      "vessel_id": 3,
+      "plate_number": "KH-92579-TS",
+      "ship_name": "Tàu Cá Ninh Hải 03",
+      "owner_name": "Lê Văn Tuấn",
+      "owner_phone": "0988776655",
+      "owner_address": "Tổ dân phố Đông Hải, Phường Ninh Hải, TX Ninh Hòa, Khánh Hòa",
+      "captain_name": null,
+      "captain_phone": null,
+      "captain_address": null,
+      "chieudaitoanbo": 19.2,
+      "consecutive_lost_cycles": 1,
+      "last_signal_time": "Chưa có",
+      "last_latitude": null,
+      "last_longitude": null
+    }
+  ]
+}
