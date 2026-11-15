@@ -160,16 +160,28 @@
         </div>
 
         <div class="flex flex-wrap items-center justify-between gap-2 mb-2 text-xs font-semibold">
-            <div class="flex items-center gap-3">
-                <span class="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-md border border-emerald-200">
-                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Bình thường (< 2h)
-                </span>
-                <span class="flex items-center gap-1.5 bg-red-50 text-red-700 px-2.5 py-1 rounded-md border border-red-200">
-                    <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span> Mất kết nối (> 2h)
-                </span>
-                <span class="flex items-center gap-1.5 bg-sky-50 text-sky-700 px-2.5 py-1 rounded-md border border-sky-200">
-                    <span class="w-2.5 h-2.5 rounded-full bg-sky-500"></span> Đã khắc phục
-                </span>
+            <div class="flex flex-wrap items-center gap-1.5" id="map-filter-group">
+                <span class="text-xs text-slate-500 font-bold mr-1"><i class="fa-solid fa-filter text-marine-600 mr-1"></i>Lọc trạng thái:</span>
+                <button type="button" onclick="setMapFilter('ALL')" id="map-btn-all" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border shadow-sm transition bg-slate-900 text-white border-slate-900" title="Hiển thị toàn bộ tàu">
+                    <i class="fa-solid fa-layer-group text-[10px]"></i>
+                    <span>Tất cả</span>
+                    <span id="map-count-all" class="ml-1 bg-slate-700 text-white px-1.5 py-0.2 rounded-full text-[10px]">--</span>
+                </button>
+                <button type="button" onclick="setMapFilter('LOST_SIGNAL')" id="map-btn-lost" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border shadow-sm transition bg-red-50 hover:bg-red-100 text-red-700 border-red-300" title="Chỉ hiển thị các tàu mất tín hiệu VMS">
+                    <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
+                    <span>Mất kết nối (> 2h)</span>
+                    <span id="map-count-lost" class="ml-1 bg-red-600 text-white px-1.5 py-0.2 rounded-full text-[10px] font-bold">--</span>
+                </button>
+                <button type="button" onclick="setMapFilter('NORMAL')" id="map-btn-normal" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border shadow-sm transition bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-300" title="Chỉ hiển thị các tàu đang hoạt động bình thường">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                    <span>Bình thường (< 2h)</span>
+                    <span id="map-count-normal" class="ml-1 bg-emerald-600 text-white px-1.5 py-0.2 rounded-full text-[10px] font-bold">--</span>
+                </button>
+                <button type="button" onclick="setMapFilter('RECOVERED')" id="map-btn-recovered" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border shadow-sm transition bg-sky-50 hover:bg-sky-100 text-sky-700 border-sky-300" title="Chỉ hiển thị các tàu vừa khôi phục kết nối">
+                    <span class="w-2.5 h-2.5 rounded-full bg-sky-500"></span>
+                    <span>Đã khắc phục</span>
+                    <span id="map-count-recovered" class="ml-1 bg-sky-600 text-white px-1.5 py-0.2 rounded-full text-[10px] font-bold">--</span>
+                </button>
             </div>
             <div id="map-real-coords-badge" class="text-[11px] font-normal text-slate-500">
                 <!-- Sẽ được JS điền số tàu có GPS thật -->
@@ -244,8 +256,8 @@
                     <input type="text" name="owner_name" required placeholder="Nguyễn Văn A" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-marine-500 focus:outline-none">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1">Số Điện Thoại <span class="text-red-500">*</span></label>
-                    <input type="text" name="owner_phone" required placeholder="0912345678" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-marine-500 focus:outline-none">
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Số Điện Thoại <span class="text-red-500">*</span> <span class="text-[10px] text-slate-400 font-normal">(10 số bắt đầu bằng 0)</span></label>
+                    <input type="tel" name="owner_phone" required placeholder="0912345678" pattern="0[0-9]{9}" maxlength="10" minlength="10" title="Số điện thoại gồm 10 chữ số bắt đầu bằng số 0" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-marine-500 focus:outline-none">
                 </div>
             </div>
             <div>
@@ -764,12 +776,19 @@
 
     let vesselMarkersMap = {};
     let markerClusterGroup = null;
+    let currentMapFilter = 'ALL';
+    let hasInitialMapFit = false;
+    let activePopupPlate = null;
+    let isUserZoomingOrInspecting = false;
 
     function initLeafletMap() {
         if (map) {
             setTimeout(() => {
                 map.invalidateSize();
-                autoFitAllVessels();
+                if (!hasInitialMapFit) {
+                    autoFitAllVessels();
+                    hasInitialMapFit = true;
+                }
             }, 200);
             return;
         }
@@ -866,6 +885,7 @@
             spiderfyOnMaxZoom: true,
             showCoverageOnHover: false,
             zoomToBoundsOnClick: true,
+            disableClusteringAtZoom: 13, // Từ cấp zoom 13 trở lên, bung toàn bộ tàu để xem chi tiết không bị lỗi nhảy marker
             iconCreateFunction: function(cluster) {
                 const count = cluster.getChildCount();
                 const markers = cluster.getAllChildMarkers();
@@ -883,6 +903,18 @@
         });
         map.addLayer(markerClusterGroup);
 
+        // Lắng nghe sự kiện người dùng tương tác popup để không bị giật khi polling ngầm
+        map.on('popupopen', function(e) {
+            if (e.popup && e.popup._source && e.popup._source.options) {
+                activePopupPlate = e.popup._source.options.plateNumber;
+                isUserZoomingOrInspecting = true;
+            }
+        });
+        map.on('popupclose', function(e) {
+            activePopupPlate = null;
+            isUserZoomingOrInspecting = false;
+        });
+
         // Bắt sự kiện di chuột hiển thị tọa độ thời gian thực
         map.on('mousemove', function(e) {
             const lat = e.latlng.lat.toFixed(4);
@@ -892,7 +924,35 @@
             document.getElementById('mouse-coordinates').innerText = `Tọa độ con trỏ: ${lat}°N, ${lng}°E (${latDMS}, ${lngDMS})`;
         });
 
-        updateMapMarkers(globalVessels);
+        updateMapMarkers(globalVessels, true);
+    }
+
+    function setMapFilter(status) {
+        currentMapFilter = status;
+
+        const btnAll = document.getElementById('map-btn-all');
+        const btnLost = document.getElementById('map-btn-lost');
+        const btnNormal = document.getElementById('map-btn-normal');
+        const btnRecovered = document.getElementById('map-btn-recovered');
+
+        // Reset styles
+        if (btnAll) btnAll.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border shadow-sm transition bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300";
+        if (btnLost) btnLost.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border shadow-sm transition bg-red-50 hover:bg-red-100 text-red-700 border-red-300";
+        if (btnNormal) btnNormal.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border shadow-sm transition bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-300";
+        if (btnRecovered) btnRecovered.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border shadow-sm transition bg-sky-50 hover:bg-sky-100 text-sky-700 border-sky-300";
+
+        // Active style
+        if (status === 'ALL' && btnAll) {
+            btnAll.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border shadow-md transition bg-slate-900 text-white border-slate-900 ring-2 ring-slate-400";
+        } else if (status === 'LOST_SIGNAL' && btnLost) {
+            btnLost.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border shadow-md transition bg-red-600 text-white border-red-700 ring-2 ring-red-400";
+        } else if (status === 'NORMAL' && btnNormal) {
+            btnNormal.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border shadow-md transition bg-emerald-600 text-white border-emerald-700 ring-2 ring-emerald-400";
+        } else if (status === 'RECOVERED' && btnRecovered) {
+            btnRecovered.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border shadow-md transition bg-sky-600 text-white border-sky-700 ring-2 ring-sky-400";
+        }
+
+        updateMapMarkers(globalVessels, true);
     }
 
     function toDMS(degVal, posDir, negDir) {
@@ -929,25 +989,61 @@
         return [parseFloat(lat.toFixed(5)), parseFloat(lng.toFixed(5))];
     }
 
-    function updateMapMarkers(vessels) {
+    function updateMapMarkers(vessels, forceFit = false) {
         if (!map || !markerClusterGroup) return;
+
+        // Cập nhật số đếm trên 4 nút lọc
+        const totalCount = vessels.length;
+        let lostCount = 0;
+        let normalCount = 0;
+        let recoveredCount = 0;
+        let realGpsCount = 0;
+
+        vessels.forEach(v => {
+            const st = v.state ? v.state.current_status : 'NORMAL';
+            if (st === 'LOST_SIGNAL') lostCount++;
+            else if (st === 'RECOVERED') recoveredCount++;
+            else normalCount++;
+
+            if (v.state && v.state.last_signal_time) realGpsCount++;
+        });
+
+        const elAll = document.getElementById('map-count-all');
+        const elLost = document.getElementById('map-count-lost');
+        const elNormal = document.getElementById('map-count-normal');
+        const elRecovered = document.getElementById('map-count-recovered');
+        if (elAll) elAll.innerText = totalCount;
+        if (elLost) elLost.innerText = lostCount;
+        if (elNormal) elNormal.innerText = normalCount;
+        if (elRecovered) elRecovered.innerText = recoveredCount;
+
+        // Nếu người dùng đang mở popup xem chi tiết tàu và không bị force, không xóa layers để tránh lỗi vỡ góc nhìn zoom
+        if (activePopupPlate && !forceFit) {
+            return;
+        }
+
         markerClusterGroup.clearLayers();
         mapMarkers = [];
         vesselMarkersMap = {};
 
-        let validCount = 0;
-        let realGpsCount = 0;
-        const total = vessels.length;
+        let displayedCount = 0;
 
         vessels.forEach((v, idx) => {
             const state = v.state || {};
+            const st = state.current_status || 'NORMAL';
+
+            // Áp dụng bộ lọc trạng thái người dùng đã chọn
+            if (currentMapFilter !== 'ALL' && st !== currentMapFilter) {
+                return;
+            }
+
             let lat = state.last_latitude;
             let lng = state.last_longitude;
             let isRealGPS = (state.last_signal_time !== null && state.last_signal_time !== undefined && state.last_signal_time !== '');
 
             // Nếu tàu chưa có tọa độ từ API GSTC, gán tọa độ theo cụm tự nhiên
             if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
-                const coords = getRealisticMarineCoords(idx, total);
+                const coords = getRealisticMarineCoords(idx, totalCount);
                 lat = coords[0];
                 lng = coords[1];
                 isRealGPS = false;
@@ -958,17 +1054,16 @@
                 const tmp = lat; lat = lng; lng = tmp;
             }
 
-            validCount++;
-            if (isRealGPS) realGpsCount++;
+            displayedCount++;
 
-            let isLost = (state.current_status === 'LOST_SIGNAL');
+            let isLost = (st === 'LOST_SIGNAL');
             let color = '#10b981'; // Xanh lá: Bình thường
             let statusText = 'Hoạt động bình thường';
 
             if (isLost) {
                 color = '#ef4444'; // Đỏ: Mất kết nối
                 statusText = 'Mất kết nối (> 2 giờ)';
-            } else if (state.current_status === 'RECOVERED') {
+            } else if (st === 'RECOVERED') {
                 color = '#0284c7'; // Xanh dương: Đã khắc phục
                 statusText = 'Đã khôi phục kết nối';
             }
@@ -990,7 +1085,8 @@
 
             const marker = L.marker([lat, lng], { 
                 icon: vesselIcon,
-                isLost: isLost
+                isLost: isLost,
+                plateNumber: v.plate_number
             });
 
             const lastSignalTime = state.last_signal_time ? state.last_signal_time.replace('T', ' ').substring(0, 19) : (isRealGPS ? 'Đã nhận tín hiệu' : 'Chưa có tín hiệu thực tế');
@@ -1028,8 +1124,13 @@
 
         const countInfoEl = document.getElementById('map-vessels-count-info');
         if (countInfoEl) {
+            let filterDesc = '';
+            if (currentMapFilter === 'LOST_SIGNAL') filterDesc = ' (Đang lọc: Tàu mất kết nối > 2h)';
+            else if (currentMapFilter === 'NORMAL') filterDesc = ' (Đang lọc: Tàu bình thường)';
+            else if (currentMapFilter === 'RECOVERED') filterDesc = ' (Đang lọc: Tàu đã khắc phục)';
+
             countInfoEl.innerHTML = `
-                <span>Bản đồ Google Earth: hiển thị <strong>${validCount}/${total} tàu cá</strong>.</span>
+                <span>Bản đồ Google Earth: hiển thị <strong>${displayedCount}/${totalCount} tàu cá</strong>${filterDesc}.</span>
                 <span class="text-emerald-400 font-semibold">(Đã đồng bộ GPS thật: <strong>${realGpsCount} tàu</strong>)</span>
             `;
         }
@@ -1037,38 +1138,51 @@
         const realBadgeEl = document.getElementById('map-real-coords-badge');
         if (realBadgeEl) {
             if (realGpsCount > 0) {
-                realBadgeEl.innerHTML = `<span class="text-emerald-700 font-semibold bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md"><i class="fa-solid fa-satellite mr-1"></i>Đã đồng bộ GPS thật từ Tổng cục: ${realGpsCount}/${total} tàu</span>`;
+                realBadgeEl.innerHTML = `<span class="text-emerald-700 font-semibold bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md"><i class="fa-solid fa-satellite mr-1"></i>Đã đồng bộ GPS thật từ Tổng cục: ${realGpsCount}/${totalCount} tàu</span>`;
             } else {
                 realBadgeEl.innerHTML = `<span class="text-amber-700 font-semibold bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-md"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Chưa đồng bộ tọa độ GSTC (Đang dùng cụm dự phòng)</span>`;
             }
         }
 
-        // Tự động thu phóng vừa vặn toàn bộ các tàu
-        autoFitAllVessels();
+        // CHỈ tự động thu phóng khi forceFit (người dùng bấm nút hoặc đổi bộ lọc) hoặc lần đầu mở bản đồ
+        if (forceFit || !hasInitialMapFit) {
+            autoFitAllVessels();
+            hasInitialMapFit = true;
+        }
     }
 
     function autoFitAllVessels() {
         if (!map || mapMarkers.length === 0) return;
         const group = L.featureGroup(mapMarkers);
-        map.fitBounds(group.getBounds().pad(0.15));
+        map.fitBounds(group.getBounds().pad(0.12));
     }
 
     function focusVesselOnMap(plate) {
         switchTab('map');
+        
+        // Nếu bộ lọc hiện tại đang loại trừ tàu này, reset bộ lọc về ALL để tàu hiện ra
+        if (currentMapFilter !== 'ALL') {
+            setMapFilter('ALL');
+        }
+
         setTimeout(() => {
             const marker = vesselMarkersMap[plate];
             if (marker && map) {
+                activePopupPlate = plate;
+                isUserZoomingOrInspecting = true;
+
                 if (markerClusterGroup && markerClusterGroup.hasLayer(marker)) {
                     markerClusterGroup.zoomToShowLayer(marker, () => {
-                        marker.openPopup();
+                        map.setView(marker.getLatLng(), Math.max(map.getZoom(), 15));
+                        setTimeout(() => marker.openPopup(), 200);
                     });
                 } else {
                     const latlng = marker.getLatLng();
-                    map.flyTo(latlng, 13, { animate: true, duration: 1.2 });
-                    setTimeout(() => marker.openPopup(), 1300);
+                    map.setView(latlng, 15);
+                    setTimeout(() => marker.openPopup(), 200);
                 }
             }
-        }, 250);
+        }, 300);
     }
 
     async function triggerManualScan() {

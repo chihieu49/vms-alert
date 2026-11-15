@@ -336,6 +336,7 @@ class VMSClient:
     def _normalize_gstc_records(self, raw_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Làm sạch và chuẩn hóa danh sách bản ghi vị trí tàu"""
         from app.services.geo_utils import normalize_vessel_coords
+        from app.crud import normalize_vietnam_phone
         cleaned = []
 
         for r in raw_list:
@@ -366,8 +367,8 @@ class VMSClient:
                 "ship_state": str(r.get("ship_state") or r.get("Trạng thái") or "Đang hoạt động").replace("nan", "").strip(),
                 "distanceToboundy": dist,
                 "ownerName": str(r.get("ownerName") or r.get("Chủ tàu") or "").replace("nan", "").strip(),
-                "ownerPhone": str(r.get("ownerPhone") or r.get("Số điện thoại") or "").replace(".0", "").replace("nan", "").strip(),
                 "ownerAddress": str(r.get("ownerAddress") or r.get("Địa chỉ") or "").replace("nan", "").strip(),
+                "ownerPhone": normalize_vietnam_phone(r.get("ownerPhone") or r.get("Số điện thoại")),
                 "captainName": str(r.get("captainName") or r.get("Thuyền trưởng") or "").replace("nan", "").strip(),
                 "deviceId": str(r.get("deviceId") or r.get("Mã thiết bị") or "").replace("nan", "").strip(),
                 "chieudaitoanbo": r.get("chieudaitoanbo"),

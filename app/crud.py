@@ -2,6 +2,7 @@
 """
 CRUD Operations cho Cơ sở dữ liệu
 """
+import re
 from typing import List, Optional
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -18,6 +19,25 @@ def normalize_plate(plate: str) -> str:
         p = p.replace("--", "-")
     return p
 
+def normalize_vietnam_phone(val) -> str:
+    """
+    Chuẩn hóa số điện thoại gồm đúng 10 số bắt đầu bằng số 0:
+    - Bỏ khoảng trắng, dấu chấm, dấu gạch ngang, đuôi .0 của Excel.
+    - Nếu 9 số thiếu 0 đầu (ví dụ: 333696771 -> 0333696771; 982635331 -> 0982635331).
+    - Nếu có mã quốc gia 84 (ví dụ: 84982635331 -> 0982635331).
+    """
+    if not val:
+        return ""
+    s = str(val).strip().replace(".0", "")
+    digits = re.sub(r"[^\d]", "", s)
+    if not digits:
+        return ""
+    if digits.startswith("84") and len(digits) == 11:
+        digits = "0" + digits[2:]
+    elif len(digits) == 9 and not digits.startswith("0"):
+        digits = "0" + digits
+    return digits
+
 def get_vessel_by_plate(db: Session, plate: str) -> Optional[Vessel]:
     norm = normalize_plate(plate)
     return db.query(Vessel).filter(Vessel.plate_number == norm).first()
@@ -27,16 +47,18 @@ def get_all_vessels(db: Session) -> List[Vessel]:
 
 def create_or_update_vessel(db: Session, vessel_in: VesselCreate) -> Vessel:
     norm_plate = normalize_plate(vessel_in.plate_number)
+    phone_clean = normalize_vietnam_phone(vessel_in.owner_phone)
+    capt_phone_clean = normalize_vietnam_phone(vessel_in.captain_phone)
     vessel = get_vessel_by_plate(db, norm_plate)
     
     if vessel:
         # Cập nhật thông tin
         vessel.ship_name = vessel_in.ship_name or vessel.ship_name
         vessel.owner_name = vessel_in.owner_name
-        vessel.owner_phone = vessel_in.owner_phone or vessel.owner_phone
+        vessel.owner_phone = phone_clean or vessel.owner_phone
         vessel.owner_address = vessel_in.owner_address or vessel.owner_address
         vessel.captain_name = vessel_in.captain_name or vessel.captain_name
-        vessel.captain_phone = vessel_in.captain_phone or vessel.captain_phone
+        vessel.captain_phone = capt_phone_clean or vessel.captain_phone
         vessel.captain_address = vessel_in.captain_address or vessel.captain_address
         vessel.chieudaitoanbo = vessel_in.chieudaitoanbo
         vessel.congsuat = vessel_in.congsuat or vessel.congsuat
@@ -49,10 +71,10 @@ def create_or_update_vessel(db: Session, vessel_in: VesselCreate) -> Vessel:
             plate_number=norm_plate,
             ship_name=vessel_in.ship_name or norm_plate,
             owner_name=vessel_in.owner_name,
-            owner_phone=vessel_in.owner_phone,
+            owner_phone=phone_clean,
             owner_address=vessel_in.owner_address,
             captain_name=vessel_in.captain_name,
-            captain_phone=vessel_in.captain_phone,
+            captain_phone=capt_phone_clean,
             captain_address=vessel_in.captain_address,
             chieudaitoanbo=vessel_in.chieudaitoanbo,
             congsuat=vessel_in.congsuat,

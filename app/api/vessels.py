@@ -17,7 +17,7 @@ from app.models import Vessel, VesselState
 from app.schemas import VesselCreate, VesselOut
 from app.crud import (
     get_all_vessels, get_vessel_by_plate, create_or_update_vessel,
-    delete_vessel, normalize_plate
+    delete_vessel, normalize_plate, normalize_vietnam_phone
 )
 from app.config import settings
 from app.services.vms_client import vms_client
@@ -133,7 +133,7 @@ async def import_vessels_file(file: UploadFile = File(...), db: Session = Depend
                 continue
 
             owner = str(r.get("owner_name") or "Chưa rõ").strip()
-            phone = str(r.get("owner_phone") or "").replace(".0", "").strip()
+            phone = normalize_vietnam_phone(r.get("owner_phone"))
             address = str(r.get("owner_address") or "").strip()
 
             v_obj = VesselCreate(
