@@ -32,12 +32,12 @@ class NotificationService:
             scan_time = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
         count = len(lost_vessels)
-        subject = f"[CẢNH BÁO GSTC] Phát hiện {count} tàu cá mất kết nối giám sát hành trình - Trạm Ninh Hòa ({scan_time})"
+        subject = f"[CẢNH BÁO GSTC] Phát hiện {count} tàu cá mất kết nối giám sát hành trình - Trạm Kiểm Ngư Ninh Hòa - Vạn Ninh ({scan_time})"
 
         # 1. Plain-text version
         lines = [
             "================================================================================",
-            "TRẠM THỦY SẢN NINH HÒA - HỆ THỐNG GIÁM SÁT TÀU CÁ CHUYÊN DỤNG (VMS 2H ALERT)",
+            "TRẠM KIỂM NGƯ NINH HÒA - VẠN NINH • CHI CỤC THỦY SẢN VÀ BIỂN ĐẢO TỈNH KHÁNH HÒA",
             "THÔNG BÁO TÀU CÁ MẤT TÍN HIỆU / KHÔNG CẬP NHẬT DỮ LIỆU SAU CHU KỲ 2 GIỜ",
             "================================================================================",
             f"Thời gian kiểm tra: {scan_time}",
@@ -98,7 +98,7 @@ class NotificationService:
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 24px; color: #334155;">
     <div style="max-width: 920px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
         <div style="background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); color: white; padding: 28px 32px;">
-            <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: #93c5fd; margin-bottom: 6px;">TRẠM THỦY SẢN NINH HÒA • VMS ALERT SYSTEM</div>
+            <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: #93c5fd; margin-bottom: 6px;">TRẠM KIỂM NGƯ NINH HÒA - VẠN NINH • CHI CỤC THỦY SẢN VÀ BIỂN ĐẢO TỈNH KHÁNH HÒA</div>
             <h2 style="margin: 0; font-size: 22px; color: #f59e0b;">⚠️ CẢNH BÁO TÀU CÁ MẤT KẾT NỐI SAU CHU KỲ 2 GIỜ</h2>
             <div style="margin-top: 10px; font-size: 13px; color: #cbd5e1;">
                 Thời điểm quét: <strong>{scan_time}</strong> | Số lượng tàu vi phạm tín hiệu: <strong style="color: #f87171;">{count} tàu (≥ 15m)</strong>
@@ -188,7 +188,7 @@ class NotificationService:
         if not settings.TELEGRAM_BOT_TOKEN or not settings.TELEGRAM_CHAT_ID:
             return False, "Chưa cấu hình Telegram Bot Token / Chat ID"
 
-        text = f"⚠️ *CẢNH BÁO GSTC - TRẠM NINH HÒA*\nPhát hiện *{len(lost_vessels)} tàu cá* mất kết nối sau 2 giờ:\n\n"
+        text = f"⚠️ *CẢNH BÁO GSTC - TRẠM KIỂM NGƯ NINH HÒA - VẠN NINH*\nPhát hiện *{len(lost_vessels)} tàu cá* mất kết nối sau 2 giờ:\n\n"
         for idx, v in enumerate(lost_vessels, 1):
             text += f"{idx}. *{v.get('plate_number')}*\n"
             text += f"   - Chủ tàu: {v.get('owner_name')}\n"

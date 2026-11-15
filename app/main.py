@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-VMS Alert System - Trạm Thủy Sản Ninh Hòa
+VMS Alert System - Trạm Kiểm Ngư Ninh Hòa - Vạn Ninh • Chi cục Thủy sản và Biển đảo tỉnh Khánh Hòa
 Main Application: FastAPI + APScheduler + Jinja2 Templates
 """
 import os
@@ -168,7 +168,8 @@ def start_server():
         threading.Thread(target=open_browser, daemon=True).start()
 
     print(f"\n===============================================================================")
-    print(f"       HỆ THỐNG GIÁM SÁT TÀU CÁ CHUYÊN DỤNG (VMS ALERT) - TRẠM NINH HÒA")
+    print(f"       HỆ THỐNG GIÁM SÁT TÀU CÁ CHUYÊN DỤNG (VMS ALERT)")
+    print(f"       TRẠM KIỂM NGƯ NINH HÒA - VẠN NINH • CHI CỤC THỦY SẢN VÀ BIỂN ĐẢO TỈNH KHÁNH HÒA")
     print(f"===============================================================================")
     print(f"[*] Máy chủ đang chạy tại cổng: {port}")
     print(f"[*] 1. Truy cập trên máy này:                http://localhost:{port}")

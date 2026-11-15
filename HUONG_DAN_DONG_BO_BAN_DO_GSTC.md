@@ -1,6 +1,6 @@
 # HƯỚNG DẪN ĐỒNG BỘ CHÍNH XÁC VỚI BẢN ĐỒ TỔNG CỤC THỦY SẢN (GSTC)
 
-> **Dành cho:** Trạm Kiểm ngư Ninh Hòa - Vạn Ninh / Chi cục Thủy sản tỉnh Khánh Hòa  
+> **Dành cho:** Trạm Kiểm ngư Ninh Hòa - Vạn Ninh / Chi cục Thủy sản và Biển đảo tỉnh Khánh Hòa  
 > **Mục tiêu:** Đảm bảo bản đồ giám sát tàu cá của ứng dụng khớp **100% vị trí GPS thời gian thực** với Bản đồ của Tổng cục Thủy sản (`https://gstc.tongcucthuysan.gov.vn`).
 
 ---

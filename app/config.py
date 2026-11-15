@@ -29,7 +29,7 @@ class Settings:
     SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
     SMTP_USER: str = os.getenv("SMTP_USER", "")
     SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
-    SMTP_FROM_NAME: str = os.getenv("SMTP_FROM_NAME", "Trạm Thủy Sản Ninh Hòa - Giám Sát VMS")
+    SMTP_FROM_NAME: str = os.getenv("SMTP_FROM_NAME", "Trạm Kiểm Ngư Ninh Hòa - Vạn Ninh - Giám Sát VMS")
 
     # 4. Kênh mở rộng: Telegram / Zalo / SMS
     TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")

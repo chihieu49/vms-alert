@@ -1,11 +1,11 @@
 @echo off
 chcp 65001 > nul
-title HỆ THỐNG GIÁM SÁT TÀU CÁ CHUYÊN DỤNG (VMS ALERT) - TRẠM THỦY SẢN NINH HÒA
+title HỆ THỐNG GIÁM SÁT TÀU CÁ CHUYÊN DỤNG (VMS ALERT) - TRẠM KIỂM NGƯ NINH HÒA - VẠN NINH
 color 0b
 
 echo ===============================================================================
 echo          HỆ THỐNG GIÁM SÁT TÀU CÁ CHUYÊN DỤNG (VMS ALERT SYSTEM)
-echo               TRẠM THỦY SẢN NINH HÒA - CHI CỤC THỦY SẢN
+echo               TRẠM KIỂM NGƯ NINH HÒA - VẠN NINH - CHI CỤC THỦY SẢN
 echo ===============================================================================
 echo.
 
